@@ -1,0 +1,114 @@
+{
+  "settings": {
+    "businessName": "Chewaz Bar and Restaurant",
+    "tillNumber": "3706694",
+    "salesPhones": [
+      "0759305448",
+      "0718236550"
+    ],
+    "currency": "KES",
+    "legalAge": 18,
+    "deliveryHours": "09:00-22:00"
+  },
+  "products": [
+    {
+      "productNumber": 1,
+      "id": "prd_kc_gin_750",
+      "name": "KC Gin",
+      "brand": "KC",
+      "category": "Spirit",
+      "sizeMl": 750,
+      "bottlesPerCrate": 12,
+      "priceBottle": 650,
+      "priceCrate": 7200,
+      "bulkDiscounts": [
+        { "unit": "bottle", "minQty": 6, "percent": 4 },
+        { "unit": "crate", "minQty": 2, "percent": 6 }
+      ],
+      "allowCaseBreak": true,
+      "stockBottles": 44,
+      "stockCrates": 18,
+      "active": true
+    },
+    {
+      "productNumber": 2,
+      "id": "prd_viceroy_750",
+      "name": "Viceroy Brandy",
+      "brand": "Viceroy",
+      "category": "Brandy",
+      "sizeMl": 750,
+      "bottlesPerCrate": 12,
+      "priceBottle": 700,
+      "priceCrate": 7800,
+      "bulkDiscounts": [
+        { "unit": "bottle", "minQty": 6, "percent": 3 },
+        { "unit": "crate", "minQty": 3, "percent": 7 }
+      ],
+      "allowCaseBreak": true,
+      "stockBottles": 31,
+      "stockCrates": 11,
+      "active": true
+    },
+    {
+      "productNumber": 3,
+      "id": "prd_chrome_750",
+      "name": "Chrome Vodka",
+      "brand": "Chrome",
+      "category": "Local Favorites",
+      "sizeMl": 750,
+      "bottlesPerCrate": 24,
+      "priceBottle": 700,
+      "priceCrate": 15600,
+      "bulkDiscounts": [
+        { "unit": "bottle", "minQty": 12, "percent": 5 },
+        { "unit": "crate", "minQty": 2, "percent": 8 }
+      ],
+      "allowCaseBreak": true,
+      "stockBottles": 62,
+      "stockCrates": 9,
+      "active": true
+    },
+    {
+      "productNumber": 4,
+      "id": "prd_whisky_classic_750",
+      "name": "Classic Whisky",
+      "brand": "Whisky",
+      "category": "Whisky",
+      "sizeMl": 750,
+      "bottlesPerCrate": 12,
+      "priceBottle": 1100,
+      "priceCrate": 12300,
+      "bulkDiscounts": [
+        { "unit": "bottle", "minQty": 4, "percent": 4 },
+        { "unit": "crate", "minQty": 2, "percent": 9 }
+      ],
+      "allowCaseBreak": true,
+      "stockBottles": 25,
+      "stockCrates": 14,
+      "active": true
+    }
+  ],
+  "customers": [
+    {
+      "id": "cus_001",
+      "name": "Grace W.",
+      "phone": "+254700000111",
+      "channels": { "sms": true, "whatsapp": true }
+    },
+    {
+      "id": "cus_002",
+      "name": "Dennis M.",
+      "phone": "+254711000222",
+      "channels": { "sms": true, "whatsapp": false }
+    },
+    {
+      "id": "cus_003",
+      "name": "Aisha N.",
+      "phone": "+254722000333",
+      "channels": { "sms": false, "whatsapp": true }
+    }
+  ],
+  "orders": [],
+  "marketingLogs": [],
+  "stockMovements": []
+}
