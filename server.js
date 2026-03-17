@@ -2,6 +2,8 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const { URL } = require("url");
+const { kv } = require("@vercel/kv");
+
 
 // ── Africa's Talking SMS ──────────────────────────────────────────────────────
 const AT_API_KEY = process.env.AT_API_KEY || "";
@@ -69,8 +71,26 @@ const HOST = process.env.HOST || "127.0.0.1";
 const DATA_PATH = path.join(__dirname, "data", "store.json");
 const PUBLIC_DIR = path.join(__dirname, "public");
 
-function readStore() {
-  const store = JSON.parse(fs.readFileSync(DATA_PATH, "utf8"));
+async function readStore() {
+  let store;
+  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+    try {
+      store = await kv.get("raven_store");
+    } catch (err) {
+      console.warn("[KV] Error reading from KV, falling back to local file:", err.message);
+    }
+  }
+
+  if (!store) {
+    try {
+      store = JSON.parse(fs.readFileSync(DATA_PATH, "utf8"));
+    } catch (err) {
+      console.error("[FS] Fatal error reading local store:", err.message);
+      // fallback to empty structure if both fail
+      store = { settings: {}, products: [], orders: [], marketingLogs: [], stockMovements: [], customers: [] };
+    }
+  }
+
   if (!Array.isArray(store.stockMovements)) store.stockMovements = [];
   if (!store.settings.businessName) store.settings.businessName = "Chewaz Bar and Restaurant";
   if (!store.settings.tillNumber) store.settings.tillNumber = "3706694";
@@ -84,9 +104,22 @@ function readStore() {
   return store;
 }
 
-function writeStore(store) {
-  fs.writeFileSync(DATA_PATH, JSON.stringify(store, null, 2));
+async function writeStore(store) {
+  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+    try {
+      await kv.set("raven_store", store);
+    } catch (err) {
+      console.error("[KV] Error writing to KV:", err.message);
+    }
+  }
+  // still write to local file for backup/local dev consistency
+  try {
+    fs.writeFileSync(DATA_PATH, JSON.stringify(store, null, 2));
+  } catch (err) {
+    console.error("[FS] Error writing to local file:", err.message);
+  }
 }
+
 
 function sendJson(res, status, payload) {
   const body = JSON.stringify(payload);
@@ -190,11 +223,12 @@ async function sendChannelMessage(channel, phone, message) {
   return { channel, phone, message, status: "mock", provider: "mock" };
 }
 
-function routeApi(req, res, url) {
+async function routeApi(req, res, url) {
   const method = req.method || "GET";
-  const store = readStore();
+  const store = await readStore();
 
   if (method === "GET" && url.pathname === "/api/settings") {
+
     return sendJson(res, 200, store.settings);
   }
 
@@ -237,7 +271,7 @@ function routeApi(req, res, url) {
 
   if (method === "POST" && url.pathname === "/api/inventory/restock") {
     return parseBody(req)
-      .then((body) => {
+      .then(async (body) => {
         const product = store.products.find((p) => p.id === body.productId);
         if (!product) return sendJson(res, 404, { error: "Product not found" });
 
@@ -262,7 +296,7 @@ function routeApi(req, res, url) {
           cratesOut: 0,
           note: body.note || null
         });
-        writeStore(store);
+        await writeStore(store);
 
         return sendJson(res, 200, { ok: true, product });
       })
@@ -271,7 +305,7 @@ function routeApi(req, res, url) {
 
   if (method === "POST" && url.pathname === "/api/pricing") {
     return parseBody(req)
-      .then((body) => {
+      .then(async (body) => {
         const product = store.products.find((p) => p.id === body.productId);
         if (!product) return sendJson(res, 404, { error: "Product not found" });
 
@@ -295,7 +329,7 @@ function routeApi(req, res, url) {
             .filter((rule) => rule.minQty > 0 && rule.percent >= 0 && rule.percent <= 100);
         }
 
-        writeStore(store);
+        await writeStore(store);
         return sendJson(res, 200, { ok: true, product });
       })
       .catch((err) => sendJson(res, 400, { error: err.message }));
@@ -303,7 +337,8 @@ function routeApi(req, res, url) {
 
   if (method === "POST" && url.pathname === "/api/orders") {
     return parseBody(req)
-      .then((body) => {
+      .then(async (body) => {
+
         if (!body.confirmAge) {
           return sendJson(res, 400, { error: `Customer must confirm ${store.settings.legalAge}+ age gate` });
         }
@@ -402,11 +437,12 @@ function routeApi(req, res, url) {
         };
 
         store.orders.unshift(order);
-        writeStore(store);
+        await writeStore(store);
         return sendJson(res, 201, order);
       })
       .catch((err) => sendJson(res, 400, { error: err.message }));
   }
+
 
   if (method === "GET" && url.pathname === "/api/orders") {
     return sendJson(res, 200, store.orders);
@@ -446,9 +482,10 @@ function routeApi(req, res, url) {
         };
 
         store.marketingLogs.unshift(log);
-        writeStore(store);
+        await writeStore(store);
 
         const provider = atSms ? "africastalking" : "mock";
+
         return sendJson(res, 200, {
           ok: true,
           queued: results.length,
@@ -479,9 +516,10 @@ function routeApi(req, res, url) {
             const order = store.orders.find(o => o.id === orderId);
             if (order) {
               order.mpesaCheckoutRequestId = result.CheckoutRequestID;
-              writeStore(store);
+              await writeStore(store);
             }
           }
+
 
           return sendJson(res, 200, result);
         } catch (err) {
@@ -494,7 +532,7 @@ function routeApi(req, res, url) {
 
   if (method === "POST" && url.pathname === "/api/payments/callback") {
     return parseBody(req)
-      .then((body) => {
+      .then(async (body) => {
         const stkCallback = body.Body.stkCallback;
         const checkoutRequestId = stkCallback.CheckoutRequestID;
         const status = stkCallback.ResultCode === 0 ? "paid" : "failed";
@@ -506,9 +544,10 @@ function routeApi(req, res, url) {
         if (order) {
           order.paymentStatus = status;
           order.mpesaResult = stkCallback;
-          writeStore(store);
+          await writeStore(store);
           console.log(`[M-Pesa] Order ${order.id} marked as ${status}`);
         }
+
 
         return sendJson(res, 200, { ok: true });
       })
@@ -560,7 +599,7 @@ function serveStatic(req, res, url) {
   res.end(content);
 }
 
-const server = http.createServer((req, res) => {
+const server = http.createServer(async (req, res) => {
   const url = new URL(req.url || "/", `http://${req.headers.host}`);
 
   if ((req.method === "POST" || req.method === "PUT" || req.method === "PATCH") && req.headers["content-type"]?.includes("application/json") === false) {
@@ -568,11 +607,18 @@ const server = http.createServer((req, res) => {
   }
 
   if (url.pathname.startsWith("/api/")) {
-    return routeApi(req, res, url);
+    try {
+      await routeApi(req, res, url);
+      return;
+    } catch (err) {
+      console.error("[API] Unhandled error:", err.message);
+      return sendJson(res, 500, { error: "Internal server error" });
+    }
   }
 
   return serveStatic(req, res, url);
 });
+
 
 server.listen(PORT, HOST, () => {
   // eslint-disable-next-line no-console
