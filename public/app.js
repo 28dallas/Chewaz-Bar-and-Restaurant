@@ -5,7 +5,8 @@ const state = {
   visibleProducts: [],
   inventory: [],
   stockMovements: [],
-  cart: []
+  cart: [],
+  orders: []
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -248,6 +249,83 @@ function renderStockMovements() {
     </table>
   `;
 }
+function renderOrders() {
+  const filter = $("#orderStatusFilter").value;
+  const filtered = state.orders.filter(o => filter === "all" || o.paymentStatus === filter || (filter === "pending_delivery" && !o.paymentStatus));
+
+  const rows = filtered
+    .map((o) => {
+      const status = o.paymentStatus || "pending";
+      const statusClass = `status-${status}`;
+      return `
+      <tr>
+        <td>${new Date(o.createdAt).toLocaleString()}</td>
+        <td>${o.id}</td>
+        <td>${o.customer.name} (${o.customer.phone})</td>
+        <td>${currency(o.total)}</td>
+        <td><span class="status-pill ${statusClass}">${status}</span></td>
+      </tr>
+    `;
+    })
+    .join("");
+
+  $("#ordersTable").innerHTML = `
+    <table class="table">
+      <thead>
+        <tr><th>Date</th><th>Order ID</th><th>Customer</th><th>Total</th><th>Status</th></tr>
+      </thead>
+      <tbody>${rows || "<tr><td colspan='5'>No orders found.</td></tr>"}</tbody>
+    </table>
+  `;
+}
+
+function renderDailySales() {
+  const today = new Date().toISOString().split("T")[0];
+  const todayOrders = state.orders.filter(o => o.createdAt.startsWith(today));
+  const paidOrders = todayOrders.filter(o => o.paymentStatus === "paid");
+
+  const totalRevenue = todayOrders.reduce((sum, o) => sum + o.total, 0);
+  const paidRevenue = paidOrders.reduce((sum, o) => sum + o.total, 0);
+
+  $("#dailySalesSummary").innerHTML = `
+    <div class="summary-card">
+      <h4>Today's Total Orders</h4>
+      <div class="value">${todayOrders.length}</div>
+    </div>
+    <div class="summary-card">
+      <h4>Expected Revenue</h4>
+      <div class="value">${currency(totalRevenue)}</div>
+    </div>
+    <div class="summary-card">
+      <h4>Confirmed Revenue (Paid)</h4>
+      <div class="value">${currency(paidRevenue)}</div>
+    </div>
+  `;
+}
+
+async function pollPaymentStatus(orderId, maxAttempts = 12) {
+  let attempts = 0;
+  const interval = setInterval(async () => {
+    attempts++;
+    try {
+      const orders = await api("/api/orders");
+      const order = orders.find(o => o.id === orderId);
+      if (order && order.paymentStatus === "paid") {
+        clearInterval(interval);
+        $("#checkoutStatus").textContent = `Payment confirmed for order ${orderId}! 🥂`;
+        await refreshData();
+      } else if (order && order.paymentStatus === "failed") {
+        clearInterval(interval);
+        $("#checkoutStatus").textContent = `Payment failed for order ${orderId}. Please try again or pay via cash.`;
+      } else if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        $("#checkoutStatus").textContent += "\nPayment verification timed out. Please check with staff or refresh orders.";
+      }
+    } catch (err) {
+      console.error("Polling error:", err);
+    }
+  }, 5000); // Poll every 5 seconds
+}
 
 async function loadCatalog(forceReload = false) {
   if (forceReload || !state.products.length) {
@@ -258,17 +336,19 @@ async function loadCatalog(forceReload = false) {
 }
 
 async function loadBasics() {
-  const [settings, categories, inventory, stockMovements] = await Promise.all([
+  const [settings, categories, inventory, stockMovements, orders] = await Promise.all([
     api("/api/settings"),
     api("/api/categories"),
     api("/api/inventory"),
-    api("/api/stock/movements")
+    api("/api/stock/movements"),
+    api("/api/orders")
   ]);
 
   state.settings = settings;
   state.categories = categories;
   state.inventory = inventory;
   state.stockMovements = stockMovements;
+  state.orders = orders;
 
   $("#businessName").textContent = settings.businessName;
   $("#businessMeta").textContent = `Till Number: ${settings.tillNumber}`;
@@ -284,6 +364,8 @@ async function loadBasics() {
 
   renderInventory();
   renderStockMovements();
+  renderOrders();
+  renderDailySales();
 }
 
 async function onCheckout(ev) {
@@ -327,6 +409,7 @@ async function onCheckout(ev) {
 
         if (mpesaResult.ResponseCode === "0") {
           statusText = `Order ${order.id} created. Please check your phone for the M-Pesa PIN prompt to pay ${currency(order.total)}.`;
+          pollPaymentStatus(order.id);
         } else {
           statusText = `Order ${order.id} created, but M-Pesa prompt failed: ${mpesaResult.ResponseDescription || "Unknown error"}. Please pay via cash on delivery.`;
         }
@@ -404,16 +487,20 @@ async function onMarketing(ev) {
 }
 
 async function refreshData() {
-  const [inventory, stockMovements] = await Promise.all([
+  const [inventory, stockMovements, orders] = await Promise.all([
     api("/api/inventory"),
-    api("/api/stock/movements")
+    api("/api/stock/movements"),
+    api("/api/orders")
   ]);
 
   state.inventory = inventory;
   state.stockMovements = stockMovements;
+  state.orders = orders;
 
   renderInventory();
   renderStockMovements();
+  renderOrders();
+  renderDailySales();
 
   await loadCatalog(true);
 }
@@ -461,6 +548,9 @@ async function main() {
   $("#pricingForm").addEventListener("submit", onPricing);
   $("#marketingForm").addEventListener("submit", onMarketing);
   $("#scanAddBtn").addEventListener("click", onScanAdd);
+
+  $("#orderStatusFilter").addEventListener("change", renderOrders);
+  $("#refreshOrders").addEventListener("click", refreshData);
 }
 
 main().catch((err) => {

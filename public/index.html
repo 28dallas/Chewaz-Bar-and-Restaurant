@@ -97,7 +97,22 @@
     </section>
 
     <section class="panel">
-      <h2>Admin Inventory + Pricing</h2>
+      <h2>Admin Dashboard</h2>
+      <div id="dailySalesSummary" class="status-summary"></div>
+
+      <h3>Order Management</h3>
+      <div class="filters">
+        <select id="orderStatusFilter">
+          <option value="all">All Statuses</option>
+          <option value="paid">Paid</option>
+          <option value="pending_delivery">Pending Delivery</option>
+          <option value="failed">Failed</option>
+        </select>
+        <button id="refreshOrders">Refresh Orders</button>
+      </div>
+      <div id="ordersTable"></div>
+
+      <h3>Inventory + Pricing</h3>
       <div id="inventoryTable"></div>
       <h3>Restock</h3>
       <form id="restockForm" class="form-inline">
