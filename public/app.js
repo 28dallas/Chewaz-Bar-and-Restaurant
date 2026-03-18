@@ -126,18 +126,22 @@ function renderCatalog() {
       const stockStatus = getStockStatus(p);
       return `
         <article class="product">
-          <img src="/api/placeholder/${p.name}" alt="${p.name}" loading="lazy" class="product-img" />
-          <h4>#${p.productNumber} ${p.name}</h4>
-          <div class="meta">${p.category} | ${p.sizeMl}ml | ${p.brand}</div>
-          <div class="meta">Bottle: ${currency(p.priceBottle)} | Crate: ${currency(p.priceCrate)}</div>
-          <div class="meta stock-line"><span class="stock-badge ${stockStatus.className}">${stockStatus.label}</span>Stock: ${p.stockBottles} bottles, ${p.stockCrates} crates</div>
-          <div class="row">
-            <select data-unit="${p.id}">
-              <option value="bottle">Bottle</option>
-              <option value="crate">Crate</option>
-            </select>
-            <input type="number" min="1" value="1" data-qty="${p.id}" />
-            <button data-add="${p.id}">Add</button>
+          <div class="img-wrapper">
+            <img src="/api/placeholder/${p.id}" alt="${p.name}" loading="lazy" class="product-img" />
+          </div>
+          <div class="product-content">
+            <h4>#${p.productNumber} ${p.name}</h4>
+            <div class="meta">${p.category} | ${p.sizeMl}ml | ${p.brand}</div>
+            <div class="meta">Bottle: ${currency(p.priceBottle)} | Crate: ${currency(p.priceCrate)}</div>
+            <div class="meta stock-line"><span class="stock-badge ${stockStatus.className}">${stockStatus.label}</span>Stock: ${p.stockBottles} bottles, ${p.stockCrates} crates</div>
+            <div class="row">
+              <select data-unit="${p.id}">
+                <option value="bottle">Bottle</option>
+                <option value="crate">Crate</option>
+              </select>
+              <input type="number" min="1" value="1" data-qty="${p.id}" />
+              <button data-add="${p.id}">Add</button>
+            </div>
           </div>
         </article>
       `;
@@ -196,11 +200,15 @@ function renderTopSellers() {
       const soldLabel = soldEquivalent == null ? "No sales history yet" : `Sold: ${soldEquivalent} bottle-eq`;
       return `
         <article class="top-seller">
-          <img src="/api/placeholder/${product.id}" alt="${product.name}" loading="lazy" class="product-img" />
-          <h4>#${product.productNumber} ${product.name}</h4>
-          <div class="meta">${product.brand} | ${product.sizeMl}ml</div>
-          <div class="meta">Bottle: ${currency(product.priceBottle)}</div>
-          <div class="meta stock-line"><span class="stock-badge ${stockStatus.className}">${stockStatus.label}</span>${soldLabel}</div>
+          <div class="img-wrapper">
+            <img src="/api/placeholder/${product.id}" alt="${product.name}" loading="lazy" class="product-img" />
+          </div>
+          <div class="product-content">
+            <h4>#${product.productNumber} ${product.name}</h4>
+            <div class="meta">${product.brand} | ${product.sizeMl}ml</div>
+            <div class="meta">Bottle: ${currency(product.priceBottle)}</div>
+            <div class="meta stock-line"><span class="stock-badge ${stockStatus.className}">${stockStatus.label}</span>${soldLabel}</div>
+          </div>
         </article>
       `;
     })

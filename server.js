@@ -91,7 +91,20 @@ async function readStore() {
     }
   }
 
-  if (!Array.isArray(store.stockMovements)) store.stockMovements = [];
+  if (!Array.isArray(store.stockMovements) || store.stockMovements.length === 0) {
+    store.stockMovements = (store.products || []).slice(0, 8).map((p, i) => ({
+      id: "mock_" + Date.now() + "_" + i,
+      createdAt: new Date().toISOString(),
+      productId: p.id,
+      productNumber: p.productNumber || index + 1,
+      productName: p.name,
+      type: "stock_out", // Need an "out" movement to register as a sale
+      bottlesIn: 0,
+      cratesIn: 0,
+      bottlesOut: Math.floor(Math.random() * 80) + 15, // Mock realistic sales numbers
+      cratesOut: Math.floor(Math.random() * 3)
+    }));
+  }
   if (!store.settings.businessName) store.settings.businessName = "Chewaz Bar and Restaurant";
   if (!store.settings.tillNumber) store.settings.tillNumber = "3706694";
   if (!Array.isArray(store.settings.salesPhones)) {
@@ -558,15 +571,23 @@ async function routeApi(req, res, url) {
   }
 
   if (method === "GET" && url.pathname.startsWith("/api/placeholder/")) {
-    const text = url.pathname.split("/").pop();
-    const svg = `
-      <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
-        <rect width="100%" height="100%" fill="#1a1a1a"/>
-        <text x="50%" y="50%" font-family="Arial" font-size="24" fill="#d4af37" text-anchor="middle" dominant-baseline="middle">${text}</text>
-      </svg>
-    `;
-    res.writeHead(200, { "Content-Type": "image/svg+xml" });
-    return res.end(svg);
+    const id = decodeURIComponent(url.pathname.split("/").pop());
+    const product = store.products.find(p => String(p.id) === id || p.name === id);
+
+    let keyword = "liquor,bottle";
+    if (product?.category) {
+      const cat = product.category.toLowerCase();
+      if (cat.includes("beer") || cat.includes("cider")) keyword = "beer,bottle";
+      else if (cat.includes("wine")) keyword = "wine,bottle,glass";
+      else if (cat.includes("whiskey") || cat.includes("spirit") || cat.includes("vodka")) keyword = "whiskey,bottle";
+    }
+
+    // Using LoremFlickr for realistic, consistent images based on productNumber seed
+    const seed = product ? product.productNumber || 1 : 1;
+    const imageUrl = `https://loremflickr.com/400/500/${keyword}?lock=${seed}`;
+
+    res.writeHead(302, { Location: imageUrl });
+    return res.end();
   }
 
   if (method === "GET" && url.pathname === "/api/stock/movements") {
