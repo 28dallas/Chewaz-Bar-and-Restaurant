@@ -175,7 +175,21 @@
       <h2>Admin Dashboard</h2>
       <div id="dailySalesSummary" class="status-summary"></div>
 
-      <h3>Order Management</h3>
+      <h3>POS Tools</h3>
+      <form id="posPushForm" class="form-inline"
+        style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px;">
+        <input name="phone" required placeholder="Customer M-Pesa Number (e.g. 07...)"
+          style="flex-grow: 1; margin: 0;" />
+        <input name="amount" type="number" required placeholder="Amount (KES)" style="width: 120px; margin: 0;" />
+        <button type="submit" class="cta-btn" style="margin: 0;">Send STK Push</button>
+      </form>
+      <pre id="posPushStatus" class="status" style="display: none;"></pre>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem;">
+        <h3 style="margin: 0;">Order Management</h3>
+        <button id="downloadReceiptsBtn" class="cta-btn"
+          style="background: var(--muted); padding: 0.4rem 1rem; font-size: 0.9rem;">📥 Download CSV</button>
+      </div>
       <div class="filters">
         <select id="orderStatusFilter">
           <option value="all">All Statuses</option>

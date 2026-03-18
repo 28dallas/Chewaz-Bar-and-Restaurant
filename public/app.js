@@ -126,9 +126,6 @@ function renderCatalog() {
       const stockStatus = getStockStatus(p);
       return `
         <article class="product">
-          <div class="img-wrapper">
-            <img src="/api/placeholder/${p.id}" alt="${p.name}" loading="lazy" class="product-img" />
-          </div>
           <div class="product-content">
             <h4>#${p.productNumber} ${p.name}</h4>
             <div class="meta">${p.category} | ${p.sizeMl}ml | ${p.brand}</div>
@@ -200,9 +197,6 @@ function renderTopSellers() {
       const soldLabel = soldEquivalent == null ? "No sales history yet" : `Sold: ${soldEquivalent} bottle-eq`;
       return `
         <article class="top-seller">
-          <div class="img-wrapper">
-            <img src="/api/placeholder/${product.id}" alt="${product.name}" loading="lazy" class="product-img" />
-          </div>
           <div class="product-content">
             <h4>#${product.productNumber} ${product.name}</h4>
             <div class="meta">${product.brand} | ${product.sizeMl}ml</div>
@@ -544,6 +538,51 @@ async function onScanAdd() {
   }
 }
 
+async function onPosPush(ev) {
+  ev.preventDefault();
+  const form = new FormData(ev.target);
+  const statusEl = $("#posPushStatus");
+  statusEl.style.display = "block";
+  statusEl.textContent = "Initiating push...";
+
+  try {
+    const res = await api("/api/mpesa/admin-push", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        phone: form.get("phone"),
+        amount: Number(form.get("amount"))
+      })
+    });
+    statusEl.textContent = res.message || "Success";
+    ev.target.reset();
+  } catch (err) {
+    statusEl.textContent = "Error: " + err.message;
+  }
+}
+
+function onDownloadReceipts() {
+  const headers = ["Order ID", "Date", "Status", "Customer Name", "Customer Phone", "Total Amount"];
+  const rows = state.orders.map(o => [
+    o.id,
+    new Date(o.createdAt).toLocaleString(),
+    o.paymentStatus,
+    `"${(o.customer?.name || "N/A").replace(/"/g, '""')}"`,
+    `"${(o.customer?.phone || "N/A").replace(/"/g, '""')}"`,
+    o.total
+  ]);
+
+  const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  link.setAttribute("href", url);
+  link.setAttribute("download", `sales_receipts_${new Date().toISOString().split("T")[0]}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
 function initAgeGate() {
   const accepted = localStorage.getItem("raven_age_ok") === "1";
   const gate = $("#ageGate");
@@ -573,6 +612,9 @@ async function main() {
 
   $("#orderStatusFilter").addEventListener("change", renderOrders);
   $("#refreshOrders").addEventListener("click", refreshData);
+
+  if ($("#posPushForm")) $("#posPushForm").addEventListener("submit", onPosPush);
+  if ($("#downloadReceiptsBtn")) $("#downloadReceiptsBtn").addEventListener("click", onDownloadReceipts);
 }
 
 main().catch((err) => {

@@ -569,6 +569,25 @@ async function routeApi(req, res, url) {
         return sendJson(res, 400, { error: err.message });
       });
   }
+  if (method === "POST" && url.pathname === "/api/mpesa/admin-push") {
+    try {
+      const body = await parseBody(req);
+      const { phone, amount } = body;
+      if (!phone || !amount) return sendJson(res, 400, { error: "Missing phone or amount" });
+
+      const stkid = "POS_" + Date.now();
+      const pushRes = await triggerStkPush(phone, amount, stkid);
+
+      let msg = "STK Push Initiated. Customer should enter PIN.";
+      if (pushRes.ResponseCode !== "0") {
+        msg = `Failed: ${pushRes.errorMessage || pushRes.ResponseDescription}`;
+      }
+      return sendJson(res, 200, { message: msg, raw: pushRes });
+    } catch (err) {
+      console.error("[POS M-Pesa] Error:", err.message);
+      return sendJson(res, 500, { error: err.message });
+    }
+  }
 
   if (method === "GET" && url.pathname.startsWith("/api/placeholder/")) {
     const id = decodeURIComponent(url.pathname.split("/").pop());

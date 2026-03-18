@@ -149,20 +149,6 @@ h6 {
   overflow: hidden;
 }
 
-.img-wrapper {
-  overflow: hidden;
-  width: 100%;
-  height: 200px;
-  border-bottom: 1px solid var(--line);
-}
-
-.product-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.4s ease;
-}
-
 .product-content {
   padding: 1rem;
   display: flex;
@@ -175,12 +161,6 @@ h6 {
   transform: translateY(-5px);
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.6);
   border-color: rgba(212, 175, 55, 0.4);
-}
-
-.top-seller:hover .product-img,
-.product:hover .product-img {
-  transform: scale(1.08);
-  /* Hover effect makes image pop */
 }
 
 .top-seller h4,
