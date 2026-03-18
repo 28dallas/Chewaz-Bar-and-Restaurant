@@ -80,7 +80,7 @@ function renderCart() {
 }
 
 function applyCatalogFilters() {
-  const selectedCategory = $("#categoryFilter").value;
+  const selectedCategory = state.selectedCategory || "All";
   const search = $("#catalogSearch").value.trim().toLowerCase();
   const sort = $("#sortFilter").value;
 
@@ -357,8 +357,21 @@ async function loadBasics() {
   $("#salesPhones").textContent = `Sales: ${settings.salesPhones.join(" / ")}`;
   $("#deliveryHours").textContent = `Delivery: ${settings.deliveryHours}`;
 
-  const categoryOptions = ["All", ...categories].map((c) => `<option value="${c}">${c}</option>`).join("");
-  $("#categoryFilter").innerHTML = categoryOptions;
+  state.selectedCategory = "All";
+  const tabs = $("#categoryTabs");
+  const catList = ["All", ...categories];
+  tabs.innerHTML = catList
+    .map(c => `<button class="category-tab ${c === "All" ? "active" : ""}" data-cat="${c}">${c}</button>`)
+    .join("");
+
+  tabs.querySelectorAll(".category-tab").forEach(btn => {
+    btn.addEventListener("click", () => {
+      tabs.querySelectorAll(".category-tab").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      state.selectedCategory = btn.getAttribute("data-cat");
+      applyCatalogFilters();
+    });
+  });
 
   const productOptions = inventory.map((p) => `<option value="${p.id}">#${p.productNumber} ${p.name}</option>`).join("");
   $("#restockProduct").innerHTML = productOptions;
@@ -542,7 +555,6 @@ async function main() {
   renderCart();
 
   $("#reloadCatalog").addEventListener("click", () => loadCatalog(true));
-  $("#categoryFilter").addEventListener("change", applyCatalogFilters);
   $("#catalogSearch").addEventListener("input", applyCatalogFilters);
   $("#sortFilter").addEventListener("change", applyCatalogFilters);
   $("#checkoutForm").addEventListener("submit", onCheckout);
