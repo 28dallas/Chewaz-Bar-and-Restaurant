@@ -557,6 +557,18 @@ async function routeApi(req, res, url) {
       });
   }
 
+  if (method === "GET" && url.pathname.startsWith("/api/placeholder/")) {
+    const text = url.pathname.split("/").pop();
+    const svg = `
+      <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+        <rect width="100%" height="100%" fill="#1a1a1a"/>
+        <text x="50%" y="50%" font-family="Arial" font-size="24" fill="#d4af37" text-anchor="middle" dominant-baseline="middle">${text}</text>
+      </svg>
+    `;
+    res.writeHead(200, { "Content-Type": "image/svg+xml" });
+    return res.end(svg);
+  }
+
   if (method === "GET" && url.pathname === "/api/stock/movements") {
     return sendJson(res, 200, store.stockMovements.slice(0, 250));
   }
@@ -599,7 +611,41 @@ function serveStatic(req, res, url) {
   res.end(content);
 }
 
+const rateLimitMap = new Map();
+function rateLimit(req, res) {
+  const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+  const now = Date.now();
+  const limit = 100; // 100 requests
+  const window = 60000; // per minute
+
+  if (!rateLimitMap.has(ip)) {
+    rateLimitMap.set(ip, { count: 1, reset: now + window });
+    return true;
+  }
+
+  const entry = rateLimitMap.get(ip);
+  if (now > entry.reset) {
+    rateLimitMap.set(ip, { count: 1, reset: now + window });
+    return true;
+  }
+
+  entry.count++;
+  if (entry.count > limit) return false;
+  return true;
+}
+
 const server = http.createServer(async (req, res) => {
+  // Security Headers
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Content-Security-Policy", "default-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data: https:;");
+
+  if (!rateLimit(req, res)) {
+    return sendJson(res, 429, { error: "Too many requests. Please slow down." });
+  }
+
   const url = new URL(req.url || "/", `http://${req.headers.host}`);
 
   if ((req.method === "POST" || req.method === "PUT" || req.method === "PATCH") && req.headers["content-type"]?.includes("application/json") === false) {

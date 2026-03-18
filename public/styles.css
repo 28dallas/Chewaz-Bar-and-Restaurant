@@ -1,15 +1,16 @@
 :root {
   --bg: #0a0a0a;
-  --panel: rgba(25, 25, 25, 0.8);
-  --panel-solid: #191919;
-  --ink: #f0f0f0;
+  --panel: rgba(25, 25, 25, 0.9);
+  --panel-solid: #151515;
+  --ink: #f8f8f8;
   --accent: #d4af37;
   /* Gold */
-  --accent-hover: #ffb347;
-  --accent-2: #2f5233;
-  --line: #333333;
-  --muted: #a0a0a0;
-  --glass-border: rgba(255, 255, 255, 0.1);
+  --accent-hover: #e5c05b;
+  --accent-2: #1f3d24;
+  --line: #2a2a2a;
+  --muted: #b0b0b0;
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --success: #2ea043;
 }
 
 * {
@@ -467,5 +468,55 @@ a:hover {
 
   .filters>* {
     width: 100%;
+  }
+}
+/* Mobile Sticky Actions */
+.mobile-actions {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(15, 15, 15, 0.95);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid var(--glass-border);
+  padding: 0.75rem 1rem;
+  z-index: 1000;
+  justify-content: space-around;
+  align-items: center;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.mobile-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: color 0.2s;
+}
+
+.mobile-action-btn svg {
+  width: 22px;
+  height: 22px;
+}
+
+.mobile-action-btn:hover {
+  color: var(--accent);
+}
+
+.mobile-action-btn.checkout-btn {
+  color: var(--accent);
+}
+
+@media (max-width: 768px) {
+  .mobile-actions {
+    display: flex;
+  }
+  .layout {
+    padding-bottom: 5rem;
   }
 }

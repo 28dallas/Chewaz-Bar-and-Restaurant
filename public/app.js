@@ -126,6 +126,7 @@ function renderCatalog() {
       const stockStatus = getStockStatus(p);
       return `
         <article class="product">
+          <img src="/api/placeholder/${p.name}" alt="${p.name}" loading="lazy" class="product-img" />
           <h4>#${p.productNumber} ${p.name}</h4>
           <div class="meta">${p.category} | ${p.sizeMl}ml | ${p.brand}</div>
           <div class="meta">Bottle: ${currency(p.priceBottle)} | Crate: ${currency(p.priceCrate)}</div>
@@ -195,6 +196,7 @@ function renderTopSellers() {
       const soldLabel = soldEquivalent == null ? "No sales history yet" : `Sold: ${soldEquivalent} bottle-eq`;
       return `
         <article class="top-seller">
+          <img src="/api/placeholder/${product.id}" alt="${product.name}" loading="lazy" class="product-img" />
           <h4>#${product.productNumber} ${product.name}</h4>
           <div class="meta">${product.brand} | ${product.sizeMl}ml</div>
           <div class="meta">Bottle: ${currency(product.priceBottle)}</div>

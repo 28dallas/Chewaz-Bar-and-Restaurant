@@ -4,7 +4,57 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Raven Store | Premium Liquor Commerce</title>
+  <title>Chewaz Bar & Restaurant | Premium Liquor & Dining in Kenya</title>
+  <meta name="description"
+    content="Chewaz Bar & Restaurant offers premium liquor commerce, a wide variety of drinks, and a premium dining experience. Order online for delivery." />
+  <meta name="keywords" content="Chewaz Bar, Restaurant, Liquor Store, Kenya, Online Drinks, Delivery" />
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://chewaz-bar.vercel.app/" />
+  <meta property="og:title" content="Chewaz Bar & Restaurant | Premium Liquor & Dining" />
+  <meta property="og:description"
+    content="Premium liquor commerce and dining. browse our extensive catalog and order now." />
+  <meta property="og:image" content="/og-image.jpg" />
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:title" content="Chewaz Bar & Restaurant" />
+  <meta property="twitter:description" content="Premium liquor commerce and dining experience." />
+
+  <!-- Local Business Schema -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BarOrPub",
+      "name": "Chewaz Bar and Restaurant",
+      "image": "https://chewaz-bar.vercel.app/logo.png",
+      "@id": "https://chewaz-bar.vercel.app",
+      "url": "https://chewaz-bar.vercel.app",
+      "telephone": "+254759305448",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "M-Pesa Plaza",
+        "addressLocality": "Nairobi",
+        "addressCountry": "KE"
+      },
+      "openingHoursSpecification": {
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": [
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+          "Sunday"
+        ],
+        "opens": "11:00",
+        "closes": "23:59"
+      },
+      "priceRange": "$$"
+    }
+  </script>
 
   <!-- Google Fonts for Premium Theme -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -28,8 +78,9 @@
   <header class="hero">
     <div>
       <h1 id="businessName">Chewaz Bar & Restaurant</h1>
-      <p>Premium liquor management and e-commerce.</p>
-      <p id="businessMeta"></p>
+      <p>Premium liquor commerce and dining.</p>
+      <p id="businessMeta"><a href="https://maps.apple.com/?address=M-Pesa%20Plaza,Nairobi,Kenya" class="address-link"
+          target="_blank">Visit Us: M-Pesa Plaza, Nairobi</a></p>
     </div>
     <div class="hero-right">
       <span id="salesPhones"></span>
@@ -91,7 +142,7 @@
           <input type="checkbox" name="confirmAge" required />
           <span>I confirm I am 18+ and ID will be verified on delivery.</span>
         </label>
-        <button type="submit">Place Order</button>
+        <button type="submit" class="cta-btn">Secure My Order</button>
       </form>
       <pre id="checkoutStatus" class="status"></pre>
     </section>
