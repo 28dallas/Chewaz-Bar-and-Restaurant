@@ -595,3 +595,94 @@ a:hover {
     padding-bottom: 5rem;
   }
 }
+
+/* Print Styles */
+#printContainer {
+  display: none;
+}
+
+@media print {
+  @page {
+    margin: 1.5cm;
+  }
+
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  body::before {
+    display: none;
+  }
+
+  .hero,
+  main,
+  #ageGate,
+  .mobile-actions {
+    display: none !important;
+  }
+
+  #printContainer {
+    display: block !important;
+    color: #000 !important;
+  }
+
+  #printContainer * {
+    color: #000 !important;
+  }
+
+  .print-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    border-bottom: 2px solid #000;
+    padding-bottom: 1rem;
+  }
+
+  .print-header h1 {
+    margin: 0;
+    text-transform: uppercase;
+  }
+
+  .print-meta {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+  }
+
+  .print-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 2rem;
+  }
+
+  .print-table th,
+  .print-table td {
+    border: 1px solid #000;
+    padding: 0.6rem;
+    text-align: left;
+    font-size: 0.9rem;
+  }
+
+  .print-table th {
+    background: #f0f0f0 !important;
+    font-weight: bold;
+  }
+
+  .print-footer {
+    margin-top: 3rem;
+    text-align: center;
+    font-size: 0.85rem;
+    border-top: 1px dashed #ccc;
+    padding-top: 1rem;
+  }
+
+  .text-right {
+    text-align: right !important;
+  }
+
+  .total-row {
+    font-weight: bold;
+    font-size: 1.1rem;
+  }
+}

@@ -11,7 +11,11 @@ const state = {
 
 const $ = (sel) => document.querySelector(sel);
 
-async function api(path, options) {
+async function api(path, options = {}) {
+  const pin = sessionStorage.getItem("adminPin");
+  if (pin) {
+    options.headers = { ...options.headers, "X-Admin-Pin": pin };
+  }
   const res = await fetch(path, options);
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Request failed");
@@ -253,9 +257,38 @@ function renderStockMovements() {
     </table>
   `;
 }
+function isWithinTimeframe(dateStr, timeframe) {
+  if (timeframe === "all") return true;
+  const date = new Date(dateStr);
+  const now = new Date();
+
+  if (timeframe === "daily") {
+    return date.toDateString() === now.toDateString();
+  }
+  if (timeframe === "weekly") {
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+    return date >= startOfWeek;
+  }
+  if (timeframe === "monthly") {
+    return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+  }
+  if (timeframe === "yearly") {
+    return date.getFullYear() === now.getFullYear();
+  }
+  return true;
+}
+
 function renderOrders() {
-  const filter = $("#orderStatusFilter").value;
-  const filtered = state.orders.filter(o => filter === "all" || o.paymentStatus === filter || (filter === "pending_delivery" && !o.paymentStatus));
+  const statusFilter = $("#orderStatusFilter").value;
+  const timeframeFilter = $("#orderTimeframeFilter").value;
+
+  const filtered = state.orders.filter(o => {
+    const matchesStatus = statusFilter === "all" || o.paymentStatus === statusFilter || (statusFilter === "pending_delivery" && !o.paymentStatus);
+    const matchesTimeframe = isWithinTimeframe(o.createdAt, timeframeFilter);
+    return matchesStatus && matchesTimeframe;
+  });
 
   const rows = filtered
     .map((o) => {
@@ -340,19 +373,15 @@ async function loadCatalog(forceReload = false) {
 }
 
 async function loadBasics() {
-  const [settings, categories, inventory, stockMovements, orders] = await Promise.all([
+  const [settings, categories, inventory] = await Promise.all([
     api("/api/settings"),
     api("/api/categories"),
-    api("/api/inventory"),
-    api("/api/stock/movements"),
-    api("/api/orders")
+    api("/api/inventory")
   ]);
 
   state.settings = settings;
   state.categories = categories;
   state.inventory = inventory;
-  state.stockMovements = stockMovements;
-  state.orders = orders;
 
   $("#businessName").textContent = settings.businessName;
   $("#businessMeta").textContent = `Till Number: ${settings.tillNumber}`;
@@ -380,9 +409,31 @@ async function loadBasics() {
   $("#priceProduct").innerHTML = productOptions;
 
   renderInventory();
-  renderStockMovements();
-  renderOrders();
-  renderDailySales();
+
+  if (sessionStorage.getItem("adminPin")) {
+    await loadAdminData();
+  }
+}
+
+async function loadAdminData() {
+  try {
+    const [stockMovements, orders] = await Promise.all([
+      api("/api/stock/movements"),
+      api("/api/orders")
+    ]);
+    state.stockMovements = stockMovements;
+    state.orders = orders;
+
+    renderStockMovements();
+    renderOrders();
+    renderDailySales();
+    renderTopSellers();
+  } catch (err) {
+    if (err.message.includes("Unauthorized") || err.message.includes("Admin PIN") || err.message.includes("Invalid PIN")) {
+      sessionStorage.removeItem("adminPin");
+      checkAdminPanelState();
+    }
+  }
 }
 
 async function onCheckout(ev) {
@@ -504,22 +555,18 @@ async function onMarketing(ev) {
 }
 
 async function refreshData() {
-  const [inventory, stockMovements, orders] = await Promise.all([
-    api("/api/inventory"),
-    api("/api/stock/movements"),
-    api("/api/orders")
+  const [inventory] = await Promise.all([
+    api("/api/inventory")
   ]);
 
   state.inventory = inventory;
-  state.stockMovements = stockMovements;
-  state.orders = orders;
 
   renderInventory();
-  renderStockMovements();
-  renderOrders();
-  renderDailySales();
-
   await loadCatalog(true);
+
+  if (sessionStorage.getItem("adminPin")) {
+    await loadAdminData();
+  }
 }
 
 async function onScanAdd() {
@@ -562,11 +609,20 @@ async function onPosPush(ev) {
 }
 
 function onDownloadReceipts() {
+  const statusFilter = $("#orderStatusFilter").value;
+  const timeframeFilter = $("#orderTimeframeFilter").value;
+
+  const filtered = state.orders.filter(o => {
+    const matchesStatus = statusFilter === "all" || o.paymentStatus === statusFilter || (statusFilter === "pending_delivery" && !o.paymentStatus);
+    const matchesTimeframe = isWithinTimeframe(o.createdAt, timeframeFilter);
+    return matchesStatus && matchesTimeframe;
+  });
+
   const headers = ["Order ID", "Date", "Status", "Customer Name", "Customer Phone", "Total Amount"];
-  const rows = state.orders.map(o => [
+  const rows = filtered.map(o => [
     o.id,
     new Date(o.createdAt).toLocaleString(),
-    o.paymentStatus,
+    o.paymentStatus || "pending",
     `"${(o.customer?.name || "N/A").replace(/"/g, '""')}"`,
     `"${(o.customer?.phone || "N/A").replace(/"/g, '""')}"`,
     o.total
@@ -577,10 +633,42 @@ function onDownloadReceipts() {
   const link = document.createElement("a");
   const url = URL.createObjectURL(blob);
   link.setAttribute("href", url);
-  link.setAttribute("download", `sales_receipts_${new Date().toISOString().split("T")[0]}.csv`);
+  const dateStr = timeframeFilter === "all" ? new Date().toISOString().split("T")[0] : `${timeframeFilter}_${new Date().toISOString().split("T")[0]}`;
+  link.setAttribute("download", `sales_receipts_${dateStr}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+}
+
+async function onAdminLogin(ev) {
+  ev.preventDefault();
+  const form = new FormData(ev.target);
+  const pin = form.get("pin");
+
+  try {
+    await api("/api/admin/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pin })
+    });
+    sessionStorage.setItem("adminPin", pin);
+    checkAdminPanelState();
+    await loadAdminData();
+    ev.target.reset();
+  } catch (err) {
+    alert("Login failed: " + err.message);
+  }
+}
+
+function checkAdminPanelState() {
+  const isLoggedIn = !!sessionStorage.getItem("adminPin");
+  if (isLoggedIn) {
+    if ($("#adminLoginPanel")) $("#adminLoginPanel").style.display = "none";
+    if ($("#adminDashboardPanel")) $("#adminDashboardPanel").style.display = "block";
+  } else {
+    if ($("#adminLoginPanel")) $("#adminLoginPanel").style.display = "block";
+    if ($("#adminDashboardPanel")) $("#adminDashboardPanel").style.display = "none";
+  }
 }
 
 function initAgeGate() {
@@ -597,6 +685,16 @@ function initAgeGate() {
 
 async function main() {
   initAgeGate();
+
+  if ($("#adminLoginForm")) $("#adminLoginForm").addEventListener("submit", onAdminLogin);
+  if ($("#adminLogoutBtn")) {
+    $("#adminLogoutBtn").addEventListener("click", () => {
+      sessionStorage.removeItem("adminPin");
+      checkAdminPanelState();
+    });
+  }
+  checkAdminPanelState();
+
   await loadBasics();
   await loadCatalog(true);
   renderCart();
@@ -611,6 +709,7 @@ async function main() {
   $("#scanAddBtn").addEventListener("click", onScanAdd);
 
   $("#orderStatusFilter").addEventListener("change", renderOrders);
+  $("#orderTimeframeFilter").addEventListener("change", renderOrders);
   $("#refreshOrders").addEventListener("click", refreshData);
 
   if ($("#posPushForm")) $("#posPushForm").addEventListener("submit", onPosPush);

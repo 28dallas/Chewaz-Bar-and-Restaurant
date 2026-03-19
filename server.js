@@ -1,3 +1,4 @@
+require('dotenv').config();
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
@@ -25,14 +26,39 @@ const MPESA_SHORTCODE = process.env.MPESA_SHORTCODE || "174379";
 const MPESA_PASSKEY = process.env.MPESA_PASSKEY || "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919";
 const MPESA_CALLBACK = process.env.MPESA_CALLBACK_URL || "";
 
+function normalizePhone(phone) {
+  if (!phone) return "";
+  let cleaned = phone.replace(/[^0-9]/g, "");
+  if (cleaned.startsWith("07") || cleaned.startsWith("01")) {
+    cleaned = "254" + cleaned.slice(1);
+  } else if (cleaned.startsWith("254") && cleaned.length === 12) {
+    // Already correct
+  } else if (cleaned.length === 9) {
+    cleaned = "254" + cleaned;
+  }
+  return cleaned;
+}
+
 async function getMpesaToken() {
+  if (!MPESA_KEY || !MPESA_SECRET) {
+    throw new Error("M-Pesa Consumer Key or Secret is missing in environment variables.");
+  }
   const auth = Buffer.from(`${MPESA_KEY}:${MPESA_SECRET}`).toString("base64");
   const url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials";
-  const res = await fetch(url, {
-    headers: { Authorization: `Basic ${auth}` }
-  });
-  const data = await res.json();
-  return data.access_token;
+
+  try {
+    const res = await fetch(url, {
+      headers: { Authorization: `Basic ${auth}` }
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(`M-Pesa Auth Failed: ${res.status} ${JSON.stringify(errorData)}`);
+    }
+    const data = await res.json();
+    return data.access_token;
+  } catch (err) {
+    throw new Error(`Failed to get M-Pesa token: ${err.message}`);
+  }
 }
 
 async function triggerStkPush(phone, amount, orderId) {
@@ -46,23 +72,32 @@ async function triggerStkPush(phone, amount, orderId) {
     Timestamp: timestamp,
     TransactionType: "CustomerPayBillOnline",
     Amount: Math.round(amount),
-    PartyA: phone.replace(/[^0-9]/g, ""),
+    PartyA: normalizePhone(phone),
     PartyB: MPESA_SHORTCODE,
-    PhoneNumber: phone.replace(/[^0-9]/g, ""),
+    PhoneNumber: normalizePhone(phone),
     CallBackURL: MPESA_CALLBACK,
     AccountReference: orderId,
     TransactionDesc: `Payment for Order ${orderId}`
   };
 
-  const res = await fetch("https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(payload)
-  });
-  return res.json();
+  try {
+    const res = await fetch("https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json().catch(() => null);
+    if (!data) {
+      throw new Error(`M-Pesa STK Push returned an empty or invalid response (HTTP ${res.status})`);
+    }
+    return data;
+  } catch (err) {
+    throw new Error(`M-Pesa STK Push error: ${err.message}`);
+  }
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -73,7 +108,8 @@ const PUBLIC_DIR = path.join(__dirname, "public");
 
 async function readStore() {
   let store;
-  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+  const kvUrl = process.env.KV_REST_API_URL;
+  if (kvUrl && !kvUrl.includes("your_kv") && process.env.KV_REST_API_TOKEN) {
     try {
       store = await kv.get("raven_store");
     } catch (err) {
@@ -118,7 +154,8 @@ async function readStore() {
 }
 
 async function writeStore(store) {
-  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+  const kvUrl = process.env.KV_REST_API_URL;
+  if (kvUrl && !kvUrl.includes("your_kv") && process.env.KV_REST_API_TOKEN) {
     try {
       await kv.set("raven_store", store);
     } catch (err) {
@@ -127,6 +164,7 @@ async function writeStore(store) {
   }
   // still write to local file for backup/local dev consistency
   try {
+    fs.mkdirSync(path.join(__dirname, "data"), { recursive: true });
     fs.writeFileSync(DATA_PATH, JSON.stringify(store, null, 2));
   } catch (err) {
     console.error("[FS] Error writing to local file:", err.message);
@@ -212,7 +250,8 @@ async function sendChannelMessage(channel, phone, message) {
       return { channel, phone, message, status: "mock", provider: "mock" };
     }
     try {
-      const opts = { to: [phone], message };
+      const normalized = normalizePhone(phone);
+      const opts = { to: [normalized], message };
       if (AT_SENDER) opts.from = AT_SENDER;
       const resp = await atSms.send(opts);
       const recipient = resp.SMSMessageData?.Recipients?.[0] || {};
@@ -238,6 +277,33 @@ async function sendChannelMessage(channel, phone, message) {
 
 async function routeApi(req, res, url) {
   const method = req.method || "GET";
+
+  const protectedRoutes = [
+    "POST:/api/inventory/restock",
+    "POST:/api/pricing",
+    "POST:/api/marketing/broadcast",
+    "GET:/api/marketing/logs",
+    "POST:/api/mpesa/admin-push",
+    "GET:/api/orders",
+    "GET:/api/stock/movements"
+  ];
+  if (protectedRoutes.includes(`${method}:${url.pathname}`)) {
+    const ADMIN_PIN = process.env.ADMIN_PIN || "2495";
+    if (req.headers["x-admin-pin"] !== ADMIN_PIN) {
+      return sendJson(res, 401, { error: "Unauthorized. Invalid Admin PIN." });
+    }
+  }
+
+  if (method === "POST" && url.pathname === "/api/admin/login") {
+    return parseBody(req).then(body => {
+      const ADMIN_PIN = process.env.ADMIN_PIN || "2495";
+      if (body.pin === ADMIN_PIN) {
+        return sendJson(res, 200, { ok: true });
+      }
+      return sendJson(res, 401, { error: "Invalid PIN" });
+    }).catch(err => sendJson(res, 400, { error: err.message }));
+  }
+
   const store = await readStore();
 
   if (method === "GET" && url.pathname === "/api/settings") {
