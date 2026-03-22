@@ -62,18 +62,52 @@ function renderCart() {
     return;
   }
 
-  box.innerHTML = state.cart
+  let total = 0;
+  const cartItems = state.cart
     .map((item, idx) => {
       const product = state.products.find((p) => p.id === item.productId);
+      if (!product) return '';
+
+      const unitPrice = item.unit === 'bottle' ? product.priceBottle : product.priceCrate;
+      const lineTotal = unitPrice * item.qty;
+      total += lineTotal;
+
       return `
-        <div class="product">
-          <strong>${product?.name || item.productId}</strong><br>
-          ${item.qty} x ${item.unit}
-          <button data-cart-rm="${idx}">Remove</button>
+        <div class="product cart-item">
+          <div class="product-header">
+            <strong>#${product.productNumber} ${product.name}</strong>
+            <button data-cart-rm="${idx}" class="remove-btn">×</button>
+          </div>
+          <div class="product-details">
+            <div class="detail-row">
+              <span>Brand: ${product.brand}</span>
+              <span>Size: ${product.sizeMl}ml</span>
+            </div>
+            <div class="detail-row">
+              <span>Category: ${product.category}</span>
+              <span>Unit: ${item.unit}</span>
+            </div>
+            <div class="detail-row">
+              <span>Quantity: ${item.qty}</span>
+              <span>Price: ${currency(unitPrice)}</span>
+            </div>
+            <div class="detail-row total-row">
+              <strong>Subtotal: ${currency(lineTotal)}</strong>
+            </div>
+          </div>
         </div>
       `;
     })
     .join("");
+
+  box.innerHTML = `
+    <div class="cart-summary">
+      ${cartItems}
+      <div class="cart-total">
+        <strong>Total: ${currency(total)}</strong>
+      </div>
+    </div>
+  `;
 
   box.querySelectorAll("[data-cart-rm]").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -492,6 +526,11 @@ async function onCheckout(ev) {
     state.cart = [];
     renderCart();
     await refreshData();
+
+    // Generate and download customer receipt
+    const receiptContent = generateCustomerReceipt(order);
+    downloadTextFile(receiptContent, `receipt_${order.id}.txt`);
+
   } catch (err) {
     $("#checkoutStatus").textContent = err.message;
   }
@@ -608,33 +647,54 @@ async function onPosPush(ev) {
   }
 }
 
-function onDownloadReceipts() {
-  const statusFilter = $("#orderStatusFilter").value;
-  const timeframeFilter = $("#orderTimeframeFilter").value;
+function generateCustomerReceipt(order) {
+  const businessName = state.settings?.businessName || "Raven Store";
+  const businessMeta = `Till Number: ${state.settings?.tillNumber || "N/A"}`;
+  const salesPhones = state.settings?.salesPhones?.join(" / ") || "N/A";
 
-  const filtered = state.orders.filter(o => {
-    const matchesStatus = statusFilter === "all" || o.paymentStatus === statusFilter || (statusFilter === "pending_delivery" && !o.paymentStatus);
-    const matchesTimeframe = isWithinTimeframe(o.createdAt, timeframeFilter);
-    return matchesStatus && matchesTimeframe;
+  let receiptContent = `${businessName}\n`;
+  receiptContent += `${businessMeta}\n`;
+  receiptContent += `Sales: ${salesPhones}\n`;
+  receiptContent += `Delivery: ${state.settings?.deliveryHours || "N/A"}\n\n`;
+
+  receiptContent += `RECEIPT\n`;
+  receiptContent += `Order ID: ${order.id}\n`;
+  receiptContent += `Date: ${new Date(order.createdAt).toLocaleString()}\n`;
+  receiptContent += `Customer: ${order.customer.name}\n`;
+  receiptContent += `Phone: ${order.customer.phone}\n`;
+  if (order.customer.idNumber) {
+    receiptContent += `ID Number: ${order.customer.idNumber}\n`;
+  }
+  receiptContent += `\n`;
+
+  receiptContent += `ITEMS:\n`;
+  receiptContent += `-`.repeat(50) + `\n`;
+
+  order.items.forEach(item => {
+    receiptContent += `${item.productNumber} ${item.name}\n`;
+    receiptContent += `  ${item.qty} x ${item.unit} @ ${currency(item.unitPrice)}\n`;
+    if (item.discountPercent > 0) {
+      receiptContent += `  Discount: ${item.discountPercent}%\n`;
+    }
+    receiptContent += `  Subtotal: ${currency(item.lineTotal)}\n\n`;
   });
 
-  const headers = ["Order ID", "Date", "Status", "Customer Name", "Customer Phone", "Total Amount"];
-  const rows = filtered.map(o => [
-    o.id,
-    new Date(o.createdAt).toLocaleString(),
-    o.paymentStatus || "pending",
-    `"${(o.customer?.name || "N/A").replace(/"/g, '""')}"`,
-    `"${(o.customer?.phone || "N/A").replace(/"/g, '""')}"`,
-    o.total
-  ]);
+  receiptContent += `-`.repeat(50) + `\n`;
+  receiptContent += `TOTAL: ${currency(order.total)}\n`;
+  receiptContent += `Payment Status: ${order.paymentStatus || "Pending"}\n\n`;
 
-  const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  receiptContent += `Thank you for your business!\n`;
+  receiptContent += `Please verify ID on delivery.\n`;
+
+  return receiptContent;
+}
+
+function downloadTextFile(content, filename) {
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8;' });
   const link = document.createElement("a");
   const url = URL.createObjectURL(blob);
   link.setAttribute("href", url);
-  const dateStr = timeframeFilter === "all" ? new Date().toISOString().split("T")[0] : `${timeframeFilter}_${new Date().toISOString().split("T")[0]}`;
-  link.setAttribute("download", `sales_receipts_${dateStr}.csv`);
+  link.setAttribute("download", filename);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -658,6 +718,72 @@ async function onAdminLogin(ev) {
   } catch (err) {
     alert("Login failed: " + err.message);
   }
+}
+
+function generateSellerReceipt(orders, timeframeFilter) {
+  const businessName = state.settings?.businessName || "Raven Store";
+  const businessMeta = `Till Number: ${state.settings?.tillNumber || "N/A"}`;
+
+  let receiptContent = `${businessName} - SALES REPORT\n`;
+  receiptContent += `${businessMeta}\n`;
+  receiptContent += `Report Period: ${timeframeFilter === "all" ? "All Time" : timeframeFilter}\n`;
+  receiptContent += `Generated: ${new Date().toLocaleString()}\n\n`;
+
+  receiptContent += `SUMMARY:\n`;
+  receiptContent += `-`.repeat(60) + `\n`;
+
+  const totalOrders = orders.length;
+  const paidOrders = orders.filter(o => o.paymentStatus === "paid");
+  const totalRevenue = orders.reduce((sum, o) => sum + o.total, 0);
+  const paidRevenue = paidOrders.reduce((sum, o) => sum + o.total, 0);
+
+  receiptContent += `Total Orders: ${totalOrders}\n`;
+  receiptContent += `Paid Orders: ${paidOrders.length}\n`;
+  receiptContent += `Expected Revenue: ${currency(totalRevenue)}\n`;
+  receiptContent += `Confirmed Revenue: ${currency(paidRevenue)}\n\n`;
+
+  receiptContent += `DETAILED SALES:\n`;
+  receiptContent += `-`.repeat(60) + `\n`;
+
+  orders.forEach(order => {
+    receiptContent += `Order ID: ${order.id}\n`;
+    receiptContent += `Date: ${new Date(order.createdAt).toLocaleString()}\n`;
+    receiptContent += `Customer: ${order.customer.name} (${order.customer.phone})\n`;
+    receiptContent += `Status: ${order.paymentStatus || "pending"}\n`;
+    receiptContent += `Items:\n`;
+
+    order.items.forEach(item => {
+      receiptContent += `  - ${item.productNumber} ${item.name}: ${item.qty} ${item.unit} @ ${currency(item.unitPrice)} = ${currency(item.lineTotal)}\n`;
+    });
+
+    receiptContent += `Total: ${currency(order.total)}\n\n`;
+  });
+
+  receiptContent += `-`.repeat(60) + `\n`;
+  receiptContent += `END OF REPORT\n`;
+
+  return receiptContent;
+}
+
+function onDownloadReceipts() {
+  const statusFilter = $("#orderStatusFilter").value;
+  const timeframeFilter = $("#orderTimeframeFilter").value;
+
+  const filtered = state.orders.filter(o => {
+    const matchesStatus = statusFilter === "all" || o.paymentStatus === statusFilter || (statusFilter === "pending_delivery" && !o.paymentStatus);
+    const matchesTimeframe = isWithinTimeframe(o.createdAt, timeframeFilter);
+    return matchesStatus && matchesTimeframe;
+  });
+
+  if (!filtered.length) {
+    alert("No orders found for the selected filters.");
+    return;
+  }
+
+  // Generate detailed seller receipt
+  const receiptContent = generateSellerReceipt(filtered, timeframeFilter);
+  const dateStr = timeframeFilter === "all" ? new Date().toISOString().split("T")[0] : `${timeframeFilter}_${new Date().toISOString().split("T")[0]}`;
+  downloadTextFile(receiptContent, `sales_report_${dateStr}.txt`);
 }
 
 function checkAdminPanelState() {
