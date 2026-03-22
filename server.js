@@ -44,7 +44,7 @@ async function getMpesaToken() {
     throw new Error("M-Pesa Consumer Key or Secret is missing in environment variables.");
   }
   const auth = Buffer.from(`${MPESA_KEY}:${MPESA_SECRET}`).toString("base64");
-  const url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials";
+  const url = "https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials";
 
   try {
     const res = await fetch(url, {
@@ -70,7 +70,7 @@ async function triggerStkPush(phone, amount, orderId) {
     BusinessShortCode: MPESA_SHORTCODE,
     Password: password,
     Timestamp: timestamp,
-    TransactionType: "CustomerPayBillOnline",
+    TransactionType: "CustomerBuyGoodsOnline",
     Amount: Math.round(amount),
     PartyA: normalizePhone(phone),
     PartyB: MPESA_SHORTCODE,
@@ -81,7 +81,7 @@ async function triggerStkPush(phone, amount, orderId) {
   };
 
   try {
-    const res = await fetch("https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest", {
+    const res = await fetch("https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
