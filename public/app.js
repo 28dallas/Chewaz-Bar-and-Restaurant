@@ -554,9 +554,9 @@ async function onCheckout(ev) {
       modal.classList.remove("hidden");
     }
 
-    // Generate and download customer receipt
-    const receiptContent = generateCustomerReceipt(order);
-    downloadTextFile(receiptContent, `receipt_${order.id}.txt`);
+    // Generate and open printable HTML receipt
+    const htmlReceipt = generateCustomerHtmlReceipt(order);
+    openHtmlReceiptInTab(htmlReceipt);
 
   } catch (err) {
     $("#checkoutStatus").textContent = err.message;
