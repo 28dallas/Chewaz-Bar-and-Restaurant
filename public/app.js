@@ -647,6 +647,139 @@ async function onPosPush(ev) {
   }
 }
 
+function generateCustomerHtmlReceipt(order) {
+  const businessName = state.settings?.businessName || "Chewaz Bar & Restaurant";
+  const tillNumber = state.settings?.tillNumber || "3706694";
+  const salesPhones = state.settings?.salesPhones?.join(" / ") || "N/A";
+  const status = order.paymentStatus || "pending";
+  const statusLabel = status.toUpperCase();
+
+  const itemsHtml = order.items.map(item => `
+    <tr>
+      <td style="padding: 10px; border-bottom: 1px solid #eee;">
+        <strong>${item.name}</strong><br>
+        <small>Unit: ${item.unit} | Qty: ${item.qty}</small>
+      </td>
+      <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">
+        ${currency(item.unitPrice)}
+      </td>
+      <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">
+        ${currency(item.lineTotal)}
+      </td>
+    </tr>
+  `).join('');
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Receipt - ${order.id}</title>
+      <style>
+        body { font-family: 'Lexend', sans-serif; color: #333; margin: 0; padding: 20px; background: #f9f9f9; }
+        .receipt-card { max-width: 600px; margin: 0 auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .header { text-align: center; border-bottom: 2px solid #d4af37; padding-bottom: 20px; margin-bottom: 30px; }
+        .header h1 { color: #d4af37; margin: 0; font-size: 24px; text-transform: uppercase; }
+        .header p { margin: 5px 0; color: #666; font-size: 14px; }
+        .status-badge { display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; margin-top: 10px; }
+        .status-paid { background: #e6fffa; color: #2c7a7b; border: 1px solid #b2f5ea; }
+        .status-pending { background: #fffaf0; color: #9c4221; border: 1px solid #feebc8; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .info-box h3 { font-size: 12px; color: #999; text-transform: uppercase; margin-bottom: 5px; }
+        .info-box p { margin: 0; font-size: 15px; font-weight: 500; }
+        .items-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+        .items-table th { text-align: left; font-size: 12px; color: #999; text-transform: uppercase; padding: 10px; border-bottom: 2px solid #eee; }
+        .total-section { border-top: 2px solid #d4af37; padding-top: 20px; text-align: right; }
+        .total-row { font-size: 18px; font-weight: bold; color: #d4af37; }
+        .footer { text-align: center; margin-top: 40px; font-size: 12px; color: #999; }
+        @media print {
+          body { background: white; padding: 0; }
+          .receipt-card { box-shadow: none; border: none; max-width: 100%; }
+          .no-print { display: none; }
+          * { color: #000 !important; background: white !important; border-color: #000 !important; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="receipt-card">
+        <div class="header">
+          <h1>${businessName}</h1>
+          <p>Till Number: ${tillNumber} | Sales: ${salesPhones}</p>
+          <div class="status-badge status-${status}">${statusLabel}</div>
+        </div>
+        
+        <div class="info-grid">
+          <div class="info-box">
+            <h3>Waiter</h3>
+            <p>${order.customer.name}</p>
+            <p>${order.customer.phone}</p>
+          </div>
+          <div class="info-box" style="text-align: right;">
+            <h3>Order Details</h3>
+            <p><strong>ID:</strong> ${order.id}</p>
+            <p><strong>Date:</strong> ${new Date(order.createdAt).toLocaleString()}</p>
+          </div>
+        </div>
+
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th style="text-align: right;">Price</th>
+              <th style="text-align: right;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsHtml}
+          </tbody>
+        </table>
+
+        <div class="total-section">
+          <div class="total-row">Total: ${currency(order.total)}</div>
+          <p style="margin-top: 10px; font-size: 14px; color: #666;">Payment: ${order.paymentStatus === 'paid' ? 'Paid via M-Pesa' : 'Pay on Delivery'}</p>
+        </div>
+
+        <div class="footer">
+          <p>Thank you for choosing ${businessName}!</p>
+          <p>Please present this receipt for verification.</p>
+        </div>
+        
+        <div class="no-print" style="margin-top: 30px; text-align: center;">
+          <button onclick="window.print()" style="background: #d4af37; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold;">Print / Save as PDF</button>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+function openHtmlReceiptInTab(html) {
+  try {
+    const win = window.open('', '_blank');
+    if (!win) throw new Error("Popup blocked");
+    win.document.write(html);
+    win.document.close();
+  } catch (err) {
+    console.error("Window open failed:", err);
+    // Fallback: create a temporary modal if popup is blocked
+    const modal = document.createElement("div");
+    modal.style.position = "fixed";
+    modal.style.top = "0";
+    modal.style.left = "0";
+    modal.style.width = "100%";
+    modal.style.height = "100%";
+    modal.style.background = "rgba(0,0,0,0.8)";
+    modal.style.zIndex = "9999";
+    modal.style.overflow = "auto";
+    modal.innerHTML = `
+      <div style="padding: 20px; max-width: 800px; margin: 20px auto;">
+        <button onclick="this.parentElement.parentElement.remove()" style="margin-bottom: 20px; background: #d4af37; color: white; border: none; padding: 10px 20px; cursor: pointer;">Close & Return</button>
+        <div style="background: white; border-radius: 8px;">${html}</div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+}
+
 function generateCustomerReceipt(order) {
   const businessName = state.settings?.businessName || "Raven Store";
   const businessMeta = `Till Number: ${state.settings?.tillNumber || "N/A"}`;
@@ -718,6 +851,156 @@ async function onAdminLogin(ev) {
   } catch (err) {
     alert("Login failed: " + err.message);
   }
+}
+
+function generateProfessionalHtmlReport(orders, timeframe) {
+  const businessName = state.settings?.businessName || "Chewaz Bar & Restaurant";
+  const tillNumber = state.settings?.tillNumber || "3706694";
+  const salesPhones = state.settings?.salesPhones?.join(" / ") || "N/A";
+
+  // Calculate aggregate stats
+  const totalOrders = orders.length;
+  const paidOrders = orders.filter(o => o.paymentStatus === "paid");
+  const totalRevenue = orders.reduce((sum, o) => sum + o.total, 0);
+  const paidRevenue = paidOrders.reduce((sum, o) => sum + o.total, 0);
+
+  // Calculate product-wise breakdown
+  const productStats = {};
+  orders.forEach(order => {
+    order.items.forEach(item => {
+      if (!productStats[item.productId]) {
+        productStats[item.productId] = {
+          name: item.name,
+          productNumber: item.productNumber,
+          bottles: 0,
+          crates: 0,
+          revenue: 0
+        };
+      }
+      if (item.unit === 'bottle') productStats[item.productId].bottles += item.qty;
+      else productStats[item.productId].crates += item.qty;
+      productStats[item.productId].revenue += item.lineTotal;
+    });
+  });
+
+  const productRows = Object.values(productStats)
+    .sort((a, b) => b.revenue - a.revenue)
+    .map(p => `
+      <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #eee;">#${p.productNumber} ${p.name}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${p.bottles}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${p.crates}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">${currency(p.revenue)}</td>
+      </tr>
+    `).join('');
+
+  const orderRows = orders.map(o => `
+    <tr>
+      <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 11px;">${new Date(o.createdAt).toLocaleString()}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 11px;">${o.id}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 11px;">${o.customer.name}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 11px; text-align: right;">${currency(o.total)}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 11px; text-align: center;">
+        <span style="padding: 2px 6px; border-radius: 4px; font-size: 10px; background: ${o.paymentStatus === 'paid' ? '#e6fffa' : '#fffaf0'}; color: ${o.paymentStatus === 'paid' ? '#2c7a7b' : '#9c4221'};">
+          ${(o.paymentStatus || 'pending').toUpperCase()}
+        </span>
+      </td>
+    </tr>
+  `).join('');
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Sales Report - ${timeframe}</title>
+      <style>
+        body { font-family: 'Lexend', sans-serif; color: #333; margin: 0; padding: 20px; background: #f9f9f9; }
+        .report-container { max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .header { text-align: center; border-bottom: 2px solid #d4af37; padding-bottom: 20px; margin-bottom: 30px; }
+        .header h1 { color: #d4af37; margin: 0; font-size: 28px; }
+        .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 40px; }
+        .summary-card { background: #fdfaf0; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #f9ebbe; }
+        .summary-card h3 { font-size: 11px; color: #888; text-transform: uppercase; margin: 0 0 5px 0; }
+        .summary-card p { font-size: 18px; font-weight: bold; margin: 0; color: #333; }
+        .section-title { font-size: 14px; text-transform: uppercase; color: #d4af37; border-bottom: 1px solid #eee; padding-bottom: 5px; margin: 30px 0 15px 0; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; font-size: 11px; color: #999; text-transform: uppercase; padding: 8px; border-bottom: 2px solid #eee; }
+        @media print {
+          body { background: white; padding: 0; }
+          .report-container { box-shadow: none; border: none; width: 100%; max-width: 100%; }
+          .no-print { display: none; }
+          * { color: #000 !important; background: white !important; border-color: #000 !important; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="report-container">
+        <div class="header">
+          <h1>${businessName}</h1>
+          <p>SALES PERFORMANCE REPORT</p>
+          <p style="font-size: 12px; color: #888;">Period: ${timeframe.toUpperCase()} | Generated: ${new Date().toLocaleString()}</p>
+        </div>
+
+        <div class="summary-grid">
+          <div class="summary-card"><h3>Total Orders</h3><p>${totalOrders}</p></div>
+          <div class="summary-card"><h3>Paid Orders</h3><p>${paidOrders.length}</p></div>
+          <div class="summary-card"><h3>Expected Rev.</h3><p>${currency(totalRevenue)}</p></div>
+          <div class="summary-card"><h3>Confirmed Rev.</h3><p>${currency(paidRevenue)}</p></div>
+        </div>
+
+        <div class="section-title">Product sales breakdown</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th style="text-align: center;">Bottles</th>
+              <th style="text-align: center;">Crates</th>
+              <th style="text-align: right;">Revenue</th>
+            </tr>
+          </thead>
+          <tbody>${productRows}</tbody>
+        </table>
+
+        <div class="section-title">Detailed Order History</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Order ID</th>
+              <th>Customer</th>
+              <th style="text-align: right;">Total</th>
+              <th style="text-align: center;">Status</th>
+            </tr>
+          </thead>
+          <tbody>${orderRows}</tbody>
+        </table>
+
+        <div class="no-print" style="margin-top: 40px; text-align: center;">
+          <button onclick="window.print()" style="background: #d4af37; color: white; border: none; padding: 12px 30px; border-radius: 4px; cursor: pointer; font-weight: bold;">Print Report</button>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+function onPrintReport() {
+  const statusFilter = $("#orderStatusFilter").value;
+  const timeframeFilter = $("#orderTimeframeFilter").value;
+
+  const filtered = state.orders.filter(o => {
+    const matchesStatus = statusFilter === "all" || o.paymentStatus === statusFilter || (statusFilter === "pending_delivery" && !o.paymentStatus);
+    const matchesTimeframe = isWithinTimeframe(o.createdAt, timeframeFilter);
+    return matchesStatus && matchesTimeframe;
+  });
+
+  if (!filtered.length) {
+    alert("No orders found for the selected filters.");
+    return;
+  }
+
+  const html = generateProfessionalHtmlReport(filtered, timeframeFilter);
+  openHtmlReceiptInTab(html);
 }
 
 function generateSellerReceipt(orders, timeframeFilter) {
