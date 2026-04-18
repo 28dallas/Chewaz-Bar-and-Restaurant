@@ -55,10 +55,23 @@ function addToCart(productId, unit, qty) {
   renderCart();
 }
 
+function updateCheckoutTotal() {
+  let total = 0;
+  state.cart.forEach(item => {
+    const product = state.products.find(p => p.id === item.productId);
+    if (!product) return;
+    const unitPrice = item.unit === 'bottle' ? product.priceBottle : product.priceCrate;
+    total += unitPrice * item.qty;
+  });
+  const el = $("#checkoutLiveTotal");
+  if (el) el.textContent = total > 0 ? `Order Total: ${currency(total)}` : "";
+}
+
 function renderCart() {
   const box = $("#cart");
   if (!state.cart.length) {
     box.innerHTML = "<p>Cart is empty.</p>";
+    updateCheckoutTotal();
     return;
   }
 
@@ -115,6 +128,7 @@ function renderCart() {
       renderCart();
     });
   });
+  updateCheckoutTotal();
 }
 
 function applyCatalogFilters() {
@@ -149,6 +163,11 @@ function applyCatalogFilters() {
 
   state.visibleProducts = filtered;
   renderCatalog();
+}
+
+function showCatalogSkeletons() {
+  const catalog = $("#catalog");
+  catalog.innerHTML = Array(6).fill('<div class="skeleton skeleton-card"></div>').join("");
 }
 
 function renderCatalog() {
@@ -400,6 +419,7 @@ async function pollPaymentStatus(orderId, maxAttempts = 12) {
 
 async function loadCatalog(forceReload = false) {
   if (forceReload || !state.products.length) {
+    showCatalogSkeletons();
     state.products = await api("/api/catalog");
   }
   applyCatalogFilters();
@@ -526,6 +546,13 @@ async function onCheckout(ev) {
     state.cart = [];
     renderCart();
     await refreshData();
+
+    const modal = $("#orderSuccessModal");
+    if (modal) {
+      $("#successOrderId").textContent = `Order ID: ${order.id}`;
+      $("#successTotal").textContent = currency(order.total);
+      modal.classList.remove("hidden");
+    }
 
     // Generate and download customer receipt
     const receiptContent = generateCustomerReceipt(order);

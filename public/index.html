@@ -63,6 +63,7 @@
     href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;600;700&family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap"
     rel="stylesheet">
 
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230a0a0a'/><text y='.9em' font-size='80' x='10'>🍺</text></svg>" />
   <link rel="stylesheet" href="/styles.css" />
 </head>
 
@@ -131,9 +132,6 @@
         </select>
         <button id="reloadCatalog">Reload</button>
       </div>
-      <p class="panel-note">Import templates: <a href="/templates/product-import-template.csv" target="_blank"
-          rel="noreferrer">CSV</a> | <a href="/templates/product-import-template.json" target="_blank"
-          rel="noreferrer">JSON</a></p>
       <div class="form-inline">
         <input id="scanCode" type="number" min="1" placeholder="Scan product number e.g. 1" />
         <select id="scanUnit">
@@ -149,6 +147,7 @@
     <section class="panel">
       <h2>Checkout</h2>
       <div id="cart"></div>
+      <div id="checkoutLiveTotal" style="font-size:1.2rem; font-weight:700; color:var(--accent); margin-bottom:1rem; min-height:1.5rem;"></div>
       <form id="checkoutForm">
         <label>Waiter's Name <input name="name" placeholder="Waiter's name" /></label>
         <label>Phone <input name="phone" required placeholder="+2547..." /></label>
@@ -260,6 +259,8 @@
 
         <h3>Stock Movement (In/Out)</h3>
         <div id="stockMovementTable"></div>
+        <h3>Import Templates</h3>
+        <p class="panel-note">Download data import templates: <a href="/templates/product-import-template.csv" target="_blank" rel="noreferrer">CSV</a> | <a href="/templates/product-import-template.json" target="_blank" rel="noreferrer">JSON</a></p>
       </section>
 
       <section class="panel">
@@ -280,6 +281,33 @@
       </section>
     </div>
   </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div>
+        <strong id="footerBizName">Chewaz Bar &amp; Restaurant</strong>
+        <p>📍 M-Pesa Plaza, Nairobi</p>
+      </div>
+      <div>
+        <p id="footerHours">🕐 Delivery: 11:00 AM – 11:59 PM daily</p>
+        <p>📞 0759 305 448 / 0718 236 550</p>
+      </div>
+      <div>
+        <p>Delivery zone: Nairobi &amp; surroundings.<br>18+ only. Drink responsibly.</p>
+      </div>
+    </div>
+  </footer>
+
+  <div id="orderSuccessModal" class="success-modal hidden">
+    <div class="success-modal-card">
+      <div style="font-size:3rem;">🥂</div>
+      <h2>Order Placed!</h2>
+      <p id="successOrderId"></p>
+      <p id="successTotal"></p>
+      <button onclick="document.getElementById('orderSuccessModal').classList.add('hidden')">Done</button>
+    </div>
+  </div>
+
   <div id="printContainer"></div>
   <script src="/app.js"></script>
 </body>
