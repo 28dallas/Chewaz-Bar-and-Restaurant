@@ -1626,6 +1626,38 @@
       "stockCrates": 0,
       "active": true,
       "productNumber": 101
+    },
+    {
+      "id": "prd_1776611718027",
+      "name": "Grants 750ml",
+      "brand": "Grants",
+      "category": "Spirits",
+      "sizeMl": 750,
+      "bottlesPerCrate": 12,
+      "priceBottle": 2600,
+      "priceCrate": 31200,
+      "bulkDiscounts": [],
+      "allowCaseBreak": true,
+      "stockBottles": 20,
+      "stockCrates": 0,
+      "active": true,
+      "productNumber": 102
+    },
+    {
+      "id": "prd_1776611718028",
+      "name": "V n A 750ml",
+      "brand": "V n A",
+      "category": "Spirits",
+      "sizeMl": 750,
+      "bottlesPerCrate": 12,
+      "priceBottle": 1200,
+      "priceCrate": 14400,
+      "bulkDiscounts": [],
+      "allowCaseBreak": true,
+      "stockBottles": 20,
+      "stockCrates": 0,
+      "active": true,
+      "productNumber": 103
     }
   ],
   "customers": [
