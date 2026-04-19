@@ -921,19 +921,24 @@ function generateProfessionalHtmlReport(orders, timeframe) {
       </tr>
     `).join('');
 
-  const orderRows = orders.map(o => `
+  const orderRows = orders.map(o => {
+    const itemsList = o.items.map(item =>
+      `${item.qty} x ${item.name} (${item.unit}) @ ${currency(item.unitPrice)} = ${currency(item.lineTotal)}`
+    ).join('<br>');
+    return `
     <tr>
       <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 11px;">${new Date(o.createdAt).toLocaleString()}</td>
       <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 11px;">${o.id}</td>
       <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 11px;">${o.customer.name}</td>
-      <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 11px; text-align: right;">${currency(o.total)}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 11px;">${itemsList}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 11px; text-align: right; font-weight:bold;">${currency(o.total)}</td>
       <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 11px; text-align: center;">
         <span style="padding: 2px 6px; border-radius: 4px; font-size: 10px; background: ${o.paymentStatus === 'paid' ? '#e6fffa' : '#fffaf0'}; color: ${o.paymentStatus === 'paid' ? '#2c7a7b' : '#9c4221'};">
           ${(o.paymentStatus || 'pending').toUpperCase()}
         </span>
       </td>
     </tr>
-  `).join('');
+  `}).join('');
 
   return `
     <!DOCTYPE html>
@@ -994,7 +999,8 @@ function generateProfessionalHtmlReport(orders, timeframe) {
             <tr>
               <th>Date</th>
               <th>Order ID</th>
-              <th>Customer</th>
+              <th>Waiter</th>
+              <th>Items Sold</th>
               <th style="text-align: right;">Total</th>
               <th style="text-align: center;">Status</th>
             </tr>
@@ -1009,6 +1015,36 @@ function generateProfessionalHtmlReport(orders, timeframe) {
     </body>
     </html>
   `;
+}
+
+async function onAddProduct(ev) {
+  ev.preventDefault();
+  const form = new FormData(ev.target);
+  const statusEl = $("#addProductStatus");
+  statusEl.style.display = "block";
+  statusEl.textContent = "Saving...";
+  try {
+    const product = await api("/api/products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: form.get("name"),
+        brand: form.get("brand"),
+        category: form.get("category"),
+        sizeMl: Number(form.get("sizeMl")),
+        bottlesPerCrate: Number(form.get("bottlesPerCrate")),
+        priceBottle: Number(form.get("priceBottle")),
+        priceCrate: Number(form.get("priceCrate")),
+        stockBottles: Number(form.get("stockBottles") || 0),
+        stockCrates: Number(form.get("stockCrates") || 0)
+      })
+    });
+    statusEl.textContent = `✅ #${product.productNumber} ${product.name} added to catalog.`;
+    ev.target.reset();
+    await refreshData();
+  } catch (err) {
+    statusEl.textContent = `❌ ${err.message}`;
+  }
 }
 
 function onPrintReport() {
@@ -1150,6 +1186,8 @@ async function main() {
 
   if ($("#posPushForm")) $("#posPushForm").addEventListener("submit", onPosPush);
   if ($("#downloadReceiptsBtn")) $("#downloadReceiptsBtn").addEventListener("click", onDownloadReceipts);
+  if ($("#printReportBtn")) $("#printReportBtn").addEventListener("click", onPrintReport);
+  if ($("#addProductForm")) $("#addProductForm").addEventListener("submit", onAddProduct);
 }
 
 main().catch((err) => {

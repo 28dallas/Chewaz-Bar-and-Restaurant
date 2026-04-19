@@ -845,3 +845,17 @@ a:hover {
   .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .table { min-width: 560px; }
 }
+
+/* ── Add Product Grid ── */
+.add-product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.8rem;
+}
+.add-product-grid label {
+  margin-bottom: 0;
+}
+.add-product-grid label input {
+  margin-top: 0.3rem;
+  width: 100%;
+}

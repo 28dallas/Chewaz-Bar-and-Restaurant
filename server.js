@@ -285,7 +285,8 @@ async function routeApi(req, res, url) {
     "GET:/api/marketing/logs",
     "POST:/api/mpesa/admin-push",
     "GET:/api/orders",
-    "GET:/api/stock/movements"
+    "GET:/api/stock/movements",
+    "POST:/api/products"
   ];
   if (protectedRoutes.includes(`${method}:${url.pathname}`)) {
     const ADMIN_PIN = process.env.ADMIN_PIN || "2495";
@@ -331,6 +332,56 @@ async function routeApi(req, res, url) {
   if (method === "GET" && url.pathname === "/api/categories") {
     const categories = [...new Set(store.products.filter((p) => p.active).map((p) => p.category))];
     return sendJson(res, 200, categories);
+  }
+
+  if (method === "POST" && url.pathname === "/api/products") {
+    return parseBody(req).then(async (body) => {
+      const name = (body.name || "").trim();
+      const brand = (body.brand || "").trim();
+      const category = (body.category || "").trim();
+      const sizeMl = Number(body.sizeMl);
+      const bottlesPerCrate = Number(body.bottlesPerCrate);
+      const priceBottle = Number(body.priceBottle);
+      const priceCrate = Number(body.priceCrate);
+      const stockBottles = Number(body.stockBottles || 0);
+      const stockCrates = Number(body.stockCrates || 0);
+
+      if (!name || !brand || !category || !sizeMl || !bottlesPerCrate || !priceBottle || !priceCrate) {
+        return sendJson(res, 400, { error: "Missing required fields" });
+      }
+
+      const maxNum = store.products.reduce((m, p) => Math.max(m, p.productNumber || 0), 0);
+      const product = {
+        id: `prd_${Date.now()}`,
+        name, brand, category, sizeMl, bottlesPerCrate,
+        priceBottle, priceCrate,
+        bulkDiscounts: [],
+        allowCaseBreak: true,
+        stockBottles, stockCrates,
+        active: true,
+        productNumber: maxNum + 1
+      };
+      store.products.push(product);
+
+      if (stockBottles > 0 || stockCrates > 0) {
+        store.stockMovements.unshift({
+          id: `stk_${Date.now()}`,
+          createdAt: new Date().toISOString(),
+          productId: product.id,
+          productNumber: product.productNumber,
+          productName: product.name,
+          type: "stock_in",
+          source: "initial_stock",
+          bottlesIn: stockBottles,
+          cratesIn: stockCrates,
+          bottlesOut: 0,
+          cratesOut: 0
+        });
+      }
+
+      await writeStore(store);
+      return sendJson(res, 201, product);
+    }).catch(err => sendJson(res, 400, { error: err.message }));
   }
 
   if (method === "GET" && url.pathname === "/api/inventory") {

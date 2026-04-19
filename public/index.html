@@ -261,6 +261,23 @@
         <div id="stockMovementTable"></div>
         <h3>Import Templates</h3>
         <p class="panel-note">Download data import templates: <a href="/templates/product-import-template.csv" target="_blank" rel="noreferrer">CSV</a> | <a href="/templates/product-import-template.json" target="_blank" rel="noreferrer">JSON</a></p>
+
+        <h3>Add New Product</h3>
+        <form id="addProductForm">
+          <div class="add-product-grid">
+            <label>Product Name <input name="name" required placeholder="e.g. Tusker Lager" /></label>
+            <label>Brand <input name="brand" required placeholder="e.g. Tusker" /></label>
+            <label>Category <input name="category" required placeholder="e.g. Beers & Cans" /></label>
+            <label>Size (ml) <input name="sizeMl" type="number" required placeholder="e.g. 500" /></label>
+            <label>Bottles per Crate <input name="bottlesPerCrate" type="number" required placeholder="e.g. 24" /></label>
+            <label>Bottle Price (KES) <input name="priceBottle" type="number" required placeholder="e.g. 250" /></label>
+            <label>Crate Price (KES) <input name="priceCrate" type="number" required placeholder="e.g. 5500" /></label>
+            <label>Opening Bottles <input name="stockBottles" type="number" value="0" placeholder="0" /></label>
+            <label>Opening Crates <input name="stockCrates" type="number" value="0" placeholder="0" /></label>
+          </div>
+          <button type="submit" class="cta-btn" style="margin-top:1rem;">Add Product to Catalog</button>
+        </form>
+        <pre id="addProductStatus" class="status" style="display:none;"></pre>
       </section>
 
       <section class="panel">
