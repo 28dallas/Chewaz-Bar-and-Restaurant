@@ -683,16 +683,12 @@ function generateCustomerHtmlReceipt(order) {
 
   const itemsHtml = order.items.map(item => `
     <tr>
-      <td style="padding: 10px; border-bottom: 1px solid #eee;">
+      <td>
         <strong>${item.name}</strong><br>
-        <small>Unit: ${item.unit} | Qty: ${item.qty}</small>
+        <small>${item.unit} x${item.qty}</small>
       </td>
-      <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">
-        ${currency(item.unitPrice)}
-      </td>
-      <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">
-        ${currency(item.lineTotal)}
-      </td>
+      <td style="text-align: right;">${currency(item.unitPrice)}</td>
+      <td style="text-align: right; font-weight:bold;">${currency(item.lineTotal)}</td>
     </tr>
   `).join('');
 
@@ -702,25 +698,27 @@ function generateCustomerHtmlReceipt(order) {
     <head>
       <title>Receipt - ${order.id}</title>
       <style>
-        body { font-family: 'Lexend', sans-serif; color: #333; margin: 0; padding: 20px; background: #f9f9f9; }
-        .receipt-card { max-width: 600px; margin: 0 auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-        .header { text-align: center; border-bottom: 2px solid #d4af37; padding-bottom: 20px; margin-bottom: 30px; }
-        .header h1 { color: #d4af37; margin: 0; font-size: 24px; text-transform: uppercase; }
-        .header p { margin: 5px 0; color: #666; font-size: 14px; }
-        .status-badge { display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; margin-top: 10px; }
+        body { font-family: 'Lexend', sans-serif; color: #333; margin: 0; padding: 10px; background: #f9f9f9; font-size: 13px; }
+        .receipt-card { max-width: 480px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .header { text-align: center; border-bottom: 2px solid #d4af37; padding-bottom: 12px; margin-bottom: 16px; }
+        .header h1 { color: #d4af37; margin: 0; font-size: 18px; text-transform: uppercase; }
+        .header p { margin: 3px 0; color: #666; font-size: 11px; }
+        .status-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: bold; text-transform: uppercase; margin-top: 6px; }
         .status-paid { background: #e6fffa; color: #2c7a7b; border: 1px solid #b2f5ea; }
         .status-pending { background: #fffaf0; color: #9c4221; border: 1px solid #feebc8; }
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
-        .info-box h3 { font-size: 12px; color: #999; text-transform: uppercase; margin-bottom: 5px; }
-        .info-box p { margin: 0; font-size: 15px; font-weight: 500; }
-        .items-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-        .items-table th { text-align: left; font-size: 12px; color: #999; text-transform: uppercase; padding: 10px; border-bottom: 2px solid #eee; }
-        .total-section { border-top: 2px solid #d4af37; padding-top: 20px; text-align: right; }
-        .total-row { font-size: 18px; font-weight: bold; color: #d4af37; }
-        .footer { text-align: center; margin-top: 40px; font-size: 12px; color: #999; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; font-size: 12px; }
+        .info-box h3 { font-size: 10px; color: #999; text-transform: uppercase; margin-bottom: 3px; }
+        .info-box p { margin: 0; font-size: 12px; font-weight: 500; }
+        .items-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+        .items-table th { text-align: left; font-size: 10px; color: #999; text-transform: uppercase; padding: 6px 4px; border-bottom: 1px solid #eee; }
+        .items-table td { padding: 5px 4px; border-bottom: 1px solid #f5f5f5; font-size: 12px; }
+        .items-table td small { font-size: 10px; color: #888; }
+        .total-section { border-top: 2px solid #000; padding-top: 10px; text-align: right; }
+        .total-row { font-size: 15px; font-weight: bold; }
+        .footer { text-align: center; margin-top: 16px; font-size: 10px; color: #999; border-top: 1px dashed #ccc; padding-top: 8px; }
         @media print {
-          body { background: white; padding: 0; }
-          .receipt-card { box-shadow: none; border: none; max-width: 100%; }
+          body { background: white; padding: 0; font-size: 11px; }
+          .receipt-card { box-shadow: none; border: none; max-width: 100%; padding: 5px; }
           .no-print { display: none; }
           * { color: #000 !important; background: white !important; border-color: #000 !important; }
         }
