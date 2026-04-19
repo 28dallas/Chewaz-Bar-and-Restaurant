@@ -888,8 +888,11 @@ function generateProfessionalHtmlReport(orders, timeframe) {
   // Calculate aggregate stats
   const totalOrders = orders.length;
   const paidOrders = orders.filter(o => o.paymentStatus === "paid");
+  const pendingOrders = orders.filter(o => !o.paymentStatus || o.paymentStatus === "pending" || o.paymentStatus === "pending_delivery");
+  const failedOrders = orders.filter(o => o.paymentStatus === "failed");
   const totalRevenue = orders.reduce((sum, o) => sum + o.total, 0);
   const paidRevenue = paidOrders.reduce((sum, o) => sum + o.total, 0);
+  const pendingRevenue = pendingOrders.reduce((sum, o) => sum + o.total, 0);
 
   // Calculate product-wise breakdown
   const productStats = {};
@@ -977,8 +980,11 @@ function generateProfessionalHtmlReport(orders, timeframe) {
         <div class="summary-grid">
           <div class="summary-card"><h3>Total Orders</h3><p>${totalOrders}</p></div>
           <div class="summary-card"><h3>Paid Orders</h3><p>${paidOrders.length}</p></div>
-          <div class="summary-card"><h3>Expected Revenue</h3><p>${currency(totalRevenue)}</p></div>
-          <div class="summary-card"><h3>Confirmed Revenue</h3><p>${currency(paidRevenue)}</p></div>
+          <div class="summary-card"><h3>Pending Orders</h3><p>${pendingOrders.length}</p></div>
+          <div class="summary-card"><h3>Failed Orders</h3><p>${failedOrders.length}</p></div>
+          <div class="summary-card"><h3>Total Revenue</h3><p>${currency(totalRevenue)}</p></div>
+          <div class="summary-card"><h3>Confirmed (Paid)</h3><p>${currency(paidRevenue)}</p></div>
+          <div class="summary-card"><h3>Pending Amount</h3><p>${currency(pendingRevenue)}</p></div>
         </div>
 
         <div class="section-title">Product sales breakdown</div>
@@ -1010,9 +1016,10 @@ function generateProfessionalHtmlReport(orders, timeframe) {
         </table>
 
         <div style="text-align:right; margin-top:20px; padding-top:15px; border-top:2px solid #000;">
-          <p style="font-size:13px; margin:4px 0;">Total Orders: <strong>${totalOrders}</strong></p>
-          <p style="font-size:13px; margin:4px 0;">Expected Revenue: <strong>${currency(totalRevenue)}</strong></p>
+          <p style="font-size:13px; margin:4px 0;">Total Orders: <strong>${totalOrders}</strong> &nbsp;|&nbsp; Paid: <strong>${paidOrders.length}</strong> &nbsp;|&nbsp; Pending: <strong>${pendingOrders.length}</strong> &nbsp;|&nbsp; Failed: <strong>${failedOrders.length}</strong></p>
+          <p style="font-size:13px; margin:4px 0;">Pending Amount (collect on delivery): <strong>${currency(pendingRevenue)}</strong></p>
           <p style="font-size:18px; margin:8px 0;">Confirmed (Paid): <strong>${currency(paidRevenue)}</strong></p>
+          <p style="font-size:18px; margin:4px 0; border-top:1px solid #000; padding-top:8px;">GRAND TOTAL: <strong>${currency(totalRevenue)}</strong></p>
         </div>
 
         <div class="no-print" style="margin-top: 40px; text-align: center;">

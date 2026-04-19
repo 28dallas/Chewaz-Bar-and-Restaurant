@@ -859,3 +859,6 @@ a:hover {
   margin-top: 0.3rem;
   width: 100%;
 }
+
+/* report summary grid — flexible for any number of cards */
+.summary-grid { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
