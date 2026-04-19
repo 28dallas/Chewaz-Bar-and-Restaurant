@@ -969,15 +969,16 @@ function generateProfessionalHtmlReport(orders, timeframe) {
       <div class="report-container">
         <div class="header">
           <h1>${businessName}</h1>
-          <p>SALES PERFORMANCE REPORT</p>
-          <p style="font-size: 12px; color: #888;">Period: ${timeframe.toUpperCase()} | Generated: ${new Date().toLocaleString()}</p>
+          <p style="margin:4px 0; font-size:13px;">Till: ${tillNumber} | Sales: ${salesPhones}</p>
+          <p style="font-weight:bold; font-size:16px; margin:8px 0;">SALES REPORT — ${timeframe.toUpperCase()}</p>
+          <p style="font-size: 12px; color: #888;">Generated: ${new Date().toLocaleString()}</p>
         </div>
 
         <div class="summary-grid">
           <div class="summary-card"><h3>Total Orders</h3><p>${totalOrders}</p></div>
           <div class="summary-card"><h3>Paid Orders</h3><p>${paidOrders.length}</p></div>
-          <div class="summary-card"><h3>Expected Rev.</h3><p>${currency(totalRevenue)}</p></div>
-          <div class="summary-card"><h3>Confirmed Rev.</h3><p>${currency(paidRevenue)}</p></div>
+          <div class="summary-card"><h3>Expected Revenue</h3><p>${currency(totalRevenue)}</p></div>
+          <div class="summary-card"><h3>Confirmed Revenue</h3><p>${currency(paidRevenue)}</p></div>
         </div>
 
         <div class="section-title">Product sales breakdown</div>
@@ -1008,8 +1009,14 @@ function generateProfessionalHtmlReport(orders, timeframe) {
           <tbody>${orderRows}</tbody>
         </table>
 
+        <div style="text-align:right; margin-top:20px; padding-top:15px; border-top:2px solid #000;">
+          <p style="font-size:13px; margin:4px 0;">Total Orders: <strong>${totalOrders}</strong></p>
+          <p style="font-size:13px; margin:4px 0;">Expected Revenue: <strong>${currency(totalRevenue)}</strong></p>
+          <p style="font-size:18px; margin:8px 0;">Confirmed (Paid): <strong>${currency(paidRevenue)}</strong></p>
+        </div>
+
         <div class="no-print" style="margin-top: 40px; text-align: center;">
-          <button onclick="window.print()" style="background: #d4af37; color: white; border: none; padding: 12px 30px; border-radius: 4px; cursor: pointer; font-weight: bold;">Print Report</button>
+          <button onclick="window.print()" style="background: #d4af37; color: white; border: none; padding: 12px 30px; border-radius: 4px; cursor: pointer; font-weight: bold;">🖨️ Print / Save as PDF</button>
         </div>
       </div>
     </body>
