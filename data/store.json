@@ -8,7 +8,8 @@
     ],
     "currency": "KES",
     "legalAge": 18,
-    "deliveryHours": "09:00-22:00"
+    "deliveryHours": "24/7",
+    "location": "Naivasha - Maruti"
   },
   "products": [
     {

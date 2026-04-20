@@ -137,7 +137,8 @@ async function readStore() {
         tillNumber: "3706694",
         salesPhones: ["0759305448", "0718236550"],
         currency: "KES",
-        deliveryHours: "11:00 AM - 11:59 PM"
+        deliveryHours: "24/7",
+        location: "Naivasha - Maruti"
       },
       products: [],
       orders: [],
