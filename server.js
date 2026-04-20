@@ -286,9 +286,10 @@ async function routeApi(req, res, url) {
     "POST:/api/mpesa/admin-push",
     "GET:/api/orders",
     "GET:/api/stock/movements",
-    "POST:/api/products"
+    "POST:/api/products",
+    "PUT:/api/products"
   ];
-  if (protectedRoutes.includes(`${method}:${url.pathname}`)) {
+  if (protectedRoutes.includes(`${method}:${url.pathname}`) || (method === "PUT" && url.pathname.startsWith("/api/products/"))) {
     const ADMIN_PIN = process.env.ADMIN_PIN || "2495";
     if (req.headers["x-admin-pin"] !== ADMIN_PIN) {
       return sendJson(res, 401, { error: "Unauthorized. Invalid Admin PIN." });
@@ -384,6 +385,27 @@ async function routeApi(req, res, url) {
     }).catch(err => sendJson(res, 400, { error: err.message }));
   }
 
+  if (method === "PUT" && url.pathname.startsWith("/api/products/")) {
+    return parseBody(req).then(async (body) => {
+      const id = url.pathname.split("/").pop();
+      const product = store.products.find(p => p.id === id);
+      if (!product) return sendJson(res, 404, { error: "Product not found" });
+
+      if (body.name) product.name = body.name.trim();
+      if (body.brand) product.brand = body.brand.trim();
+      if (body.category) product.category = body.category.trim();
+      if (body.sizeMl) product.sizeMl = Number(body.sizeMl);
+      if (body.bottlesPerCrate) product.bottlesPerCrate = Number(body.bottlesPerCrate);
+      if (body.priceBottle) product.priceBottle = Number(body.priceBottle);
+      if (body.priceCrate) product.priceCrate = Number(body.priceCrate);
+      if (body.stockBottles !== undefined) product.stockBottles = Number(body.stockBottles);
+      if (body.stockCrates !== undefined) product.stockCrates = Number(body.stockCrates);
+
+      await writeStore(store);
+      return sendJson(res, 200, product);
+    }).catch(err => sendJson(res, 400, { error: err.message }));
+  }
+
   if (method === "GET" && url.pathname === "/api/inventory") {
     return sendJson(res, 200, store.products
       .slice()
@@ -392,11 +414,16 @@ async function routeApi(req, res, url) {
         productNumber: p.productNumber,
         id: p.id,
         name: p.name,
+        brand: p.brand,
         category: p.category,
+        sizeMl: p.sizeMl,
+        bottlesPerCrate: p.bottlesPerCrate,
+        priceBottle: p.priceBottle,
+        priceCrate: p.priceCrate,
         stockBottles: p.stockBottles,
-        stockCrates: p.stockCrates,
-        bottlesPerCrate: p.bottlesPerCrate
+        stockCrates: p.stockCrates
       })));
+  }
   }
 
   if (method === "POST" && url.pathname === "/api/inventory/restock") {

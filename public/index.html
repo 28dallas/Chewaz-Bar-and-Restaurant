@@ -241,21 +241,6 @@
 
         <h3>Inventory + Pricing</h3>
         <div id="inventoryTable"></div>
-        <h3>Restock</h3>
-        <form id="restockForm" class="form-inline">
-          <select name="productId" id="restockProduct"></select>
-          <input type="number" name="bottles" min="0" value="0" placeholder="Bottles" />
-          <input type="number" name="crates" min="0" value="0" placeholder="Crates" />
-          <button type="submit">Apply</button>
-        </form>
-
-        <h3>Update Price</h3>
-        <form id="pricingForm" class="form-inline">
-          <select name="productId" id="priceProduct"></select>
-          <input type="number" name="priceBottle" min="1" placeholder="Bottle Price" required />
-          <input type="number" name="priceCrate" min="1" placeholder="Crate Price" required />
-          <button type="submit">Update</button>
-        </form>
 
         <h3>Stock Movement (In/Out)</h3>
         <div id="stockMovementTable"></div>
@@ -314,6 +299,31 @@
       </div>
     </div>
   </footer>
+
+  <div id="editProductModal" class="success-modal hidden">
+    <div class="success-modal-card" style="max-width:560px;text-align:left;">
+      <h2 style="color:var(--accent);margin-top:0;">Edit Product</h2>
+      <form id="editProductForm">
+        <input type="hidden" name="productId" />
+        <div class="add-product-grid">
+          <label>Product Name <input name="name" required /></label>
+          <label>Brand <input name="brand" required /></label>
+          <label>Category <input name="category" required /></label>
+          <label>Size (ml) <input name="sizeMl" type="number" required /></label>
+          <label>Bottles per Crate <input name="bottlesPerCrate" type="number" required /></label>
+          <label>Bottle Price (KES) <input name="priceBottle" type="number" required /></label>
+          <label>Crate Price (KES) <input name="priceCrate" type="number" required /></label>
+          <label>Stock Bottles <input name="stockBottles" type="number" required /></label>
+          <label>Stock Crates <input name="stockCrates" type="number" required /></label>
+        </div>
+        <div style="display:flex;gap:1rem;margin-top:1.2rem;">
+          <button type="submit" class="cta-btn" style="flex:1;">Save Changes</button>
+          <button type="button" onclick="document.getElementById('editProductModal').classList.add('hidden')" style="flex:1;background:var(--muted);">Cancel</button>
+        </div>
+      </form>
+      <pre id="editProductStatus" class="status" style="display:none;margin-top:1rem;"></pre>
+    </div>
+  </div>
 
   <div id="orderSuccessModal" class="success-modal hidden">
     <div class="success-modal-card">

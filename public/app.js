@@ -267,22 +267,35 @@ function renderTopSellers() {
 }
 
 function renderInventory() {
+  const isAdmin = !!sessionStorage.getItem("adminPin");
   const table = `
     <table class="table">
       <thead>
-        <tr><th>No.</th><th>Product</th><th>Category</th><th>Bottles</th><th>Crates</th><th>Bottles/Crate</th></tr>
+        <tr><th>No.</th><th>Product</th><th>Category</th><th>Size</th><th>Bottle Price</th><th>Bottles</th><th>Crates</th>${isAdmin ? '<th>Action</th>' : ''}</tr>
       </thead>
       <tbody>
-        ${state.inventory
-      .map(
-        (row) =>
-          `<tr><td>${row.productNumber}</td><td>${row.name}</td><td>${row.category}</td><td>${row.stockBottles}</td><td>${row.stockCrates}</td><td>${row.bottlesPerCrate}</td></tr>`
-      )
-      .join("")}
+        ${state.inventory.map(row => `
+          <tr>
+            <td>${row.productNumber}</td>
+            <td>${row.name}</td>
+            <td>${row.category}</td>
+            <td>${row.sizeMl}ml</td>
+            <td>KES ${row.priceBottle}</td>
+            <td>${row.stockBottles}</td>
+            <td>${row.stockCrates}</td>
+            ${isAdmin ? `<td><button class="edit-product-btn" data-id="${row.id}" style="padding:0.3rem 0.8rem;font-size:0.8rem;">✏️ Edit</button></td>` : ''}
+          </tr>
+        `).join("")}
       </tbody>
     </table>
   `;
   $("#inventoryTable").innerHTML = table;
+
+  if (isAdmin) {
+    $("#inventoryTable").querySelectorAll(".edit-product-btn").forEach(btn => {
+      btn.addEventListener("click", () => openEditModal(btn.getAttribute("data-id")));
+    });
+  }
 }
 
 function renderStockMovements() {
@@ -459,8 +472,8 @@ async function loadBasics() {
   });
 
   const productOptions = inventory.map((p) => `<option value="${p.id}">#${p.productNumber} ${p.name}</option>`).join("");
-  $("#restockProduct").innerHTML = productOptions;
-  $("#priceProduct").innerHTML = productOptions;
+  if ($("#restockProduct")) $("#restockProduct").innerHTML = productOptions;
+  if ($("#priceProduct")) $("#priceProduct").innerHTML = productOptions;
 
   renderInventory();
 
@@ -1059,6 +1072,57 @@ async function onAddProduct(ev) {
   }
 }
 
+function openEditModal(productId) {
+  const product = state.inventory.find(p => p.id === productId);
+  if (!product) return;
+  const form = $("#editProductForm");
+  form.querySelector('[name=productId]').value = product.id;
+  form.querySelector('[name=name]').value = product.name;
+  form.querySelector('[name=brand]').value = product.brand || '';
+  form.querySelector('[name=category]').value = product.category;
+  form.querySelector('[name=sizeMl]').value = product.sizeMl;
+  form.querySelector('[name=bottlesPerCrate]').value = product.bottlesPerCrate;
+  form.querySelector('[name=priceBottle]').value = product.priceBottle;
+  form.querySelector('[name=priceCrate]').value = product.priceCrate;
+  form.querySelector('[name=stockBottles]').value = product.stockBottles;
+  form.querySelector('[name=stockCrates]').value = product.stockCrates;
+  const statusEl = $("#editProductStatus");
+  statusEl.style.display = 'none';
+  statusEl.textContent = '';
+  $("#editProductModal").classList.remove("hidden");
+}
+
+async function onSaveProduct(ev) {
+  ev.preventDefault();
+  const form = new FormData(ev.target);
+  const productId = form.get("productId");
+  const statusEl = $("#editProductStatus");
+  statusEl.style.display = 'block';
+  statusEl.textContent = 'Saving...';
+  try {
+    await api(`/api/products/${productId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: form.get('name'),
+        brand: form.get('brand'),
+        category: form.get('category'),
+        sizeMl: Number(form.get('sizeMl')),
+        bottlesPerCrate: Number(form.get('bottlesPerCrate')),
+        priceBottle: Number(form.get('priceBottle')),
+        priceCrate: Number(form.get('priceCrate')),
+        stockBottles: Number(form.get('stockBottles')),
+        stockCrates: Number(form.get('stockCrates'))
+      })
+    });
+    statusEl.textContent = '✅ Saved!';
+    await refreshData();
+    setTimeout(() => $("#editProductModal").classList.add("hidden"), 800);
+  } catch (err) {
+    statusEl.textContent = '❌ ' + err.message;
+  }
+}
+
 function onPrintReport() {
   const statusFilter = $("#orderStatusFilter").value;
   const timeframeFilter = $("#orderTimeframeFilter").value;
@@ -1221,8 +1285,8 @@ async function main() {
   $("#catalogSearch").addEventListener("input", applyCatalogFilters);
   $("#sortFilter").addEventListener("change", applyCatalogFilters);
   $("#checkoutForm").addEventListener("submit", onCheckout);
-  $("#restockForm").addEventListener("submit", onRestock);
-  $("#pricingForm").addEventListener("submit", onPricing);
+  if ($("#restockForm")) $("#restockForm").addEventListener("submit", onRestock);
+  if ($("#pricingForm")) $("#pricingForm").addEventListener("submit", onPricing);
   $("#marketingForm").addEventListener("submit", onMarketing);
   $("#scanAddBtn").addEventListener("click", onScanAdd);
 
@@ -1234,6 +1298,7 @@ async function main() {
   if ($("#downloadReceiptsBtn")) $("#downloadReceiptsBtn").addEventListener("click", onDownloadReceipts);
   if ($("#printReportBtn")) $("#printReportBtn").addEventListener("click", onPrintReport);
   if ($("#addProductForm")) $("#addProductForm").addEventListener("submit", onAddProduct);
+  if ($("#editProductForm")) $("#editProductForm").addEventListener("submit", onSaveProduct);
 }
 
 main().catch((err) => {
