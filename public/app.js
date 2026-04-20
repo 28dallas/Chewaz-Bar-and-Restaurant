@@ -1123,25 +1123,59 @@ function generateSellerReceipt(orders, timeframeFilter) {
   return receiptContent;
 }
 
+function generateCsvReport(orders, timeframeFilter) {
+  const businessName = state.settings?.businessName || "Chewaz Bar & Restaurant";
+  const rows = [];
+
+  rows.push(`${businessName} - Sales Report`);
+  rows.push(`Period: ${timeframeFilter} | Generated: ${new Date().toLocaleString()}`);
+  rows.push('');
+  rows.push('Date,Order ID,Waiter,Phone,Items,Total (KES),Status');
+
+  orders.forEach(o => {
+    const items = o.items.map(i => `${i.qty}x ${i.name} (${i.unit})`).join(' | ');
+    const status = o.paymentStatus || 'pending';
+    const row = [
+      new Date(o.createdAt).toLocaleString(),
+      o.id,
+      o.customer.name,
+      o.customer.phone,
+      `"${items}"`,
+      o.total,
+      status
+    ].join(',');
+    rows.push(row);
+  });
+
+  rows.push('');
+  const paid = orders.filter(o => o.paymentStatus === 'paid');
+  const pending = orders.filter(o => !o.paymentStatus || o.paymentStatus === 'pending' || o.paymentStatus === 'pending_delivery');
+  rows.push(`Total Orders,${orders.length}`);
+  rows.push(`Paid Orders,${paid.length},KES ${paid.reduce((s,o)=>s+o.total,0)}`);
+  rows.push(`Pending Orders,${pending.length},KES ${pending.reduce((s,o)=>s+o.total,0)}`);
+  rows.push(`Grand Total,,KES ${orders.reduce((s,o)=>s+o.total,0)}`);
+
+  return rows.join('\n');
+}
+
 function onDownloadReceipts() {
-  const statusFilter = $("#orderStatusFilter").value;
   const timeframeFilter = $("#orderTimeframeFilter").value;
 
+  // Always include both paid AND pending in CSV
   const filtered = state.orders.filter(o => {
-    const matchesStatus = statusFilter === "all" || o.paymentStatus === statusFilter || (statusFilter === "pending_delivery" && !o.paymentStatus);
-    const matchesTimeframe = isWithinTimeframe(o.createdAt, timeframeFilter);
-    return matchesStatus && matchesTimeframe;
+    const status = o.paymentStatus || 'pending';
+    const includedStatuses = ['paid', 'pending', 'pending_delivery'];
+    return includedStatuses.includes(status) && isWithinTimeframe(o.createdAt, timeframeFilter);
   });
 
   if (!filtered.length) {
-    alert("No orders found for the selected filters.");
+    alert("No orders found for the selected period.");
     return;
   }
 
-  // Generate detailed seller receipt
-  const receiptContent = generateSellerReceipt(filtered, timeframeFilter);
+  const csv = generateCsvReport(filtered, timeframeFilter);
   const dateStr = timeframeFilter === "all" ? new Date().toISOString().split("T")[0] : `${timeframeFilter}_${new Date().toISOString().split("T")[0]}`;
-  downloadTextFile(receiptContent, `sales_report_${dateStr}.txt`);
+  downloadTextFile(csv, `sales_report_${dateStr}.csv`);
 }
 
 function checkAdminPanelState() {
