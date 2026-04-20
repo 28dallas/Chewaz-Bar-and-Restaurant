@@ -441,7 +441,6 @@ async function routeApi(req, res, url) {
         stockCrates: p.stockCrates
       })));
   }
-  }
 
   if (method === "POST" && url.pathname === "/api/inventory/restock") {
     return parseBody(req)
