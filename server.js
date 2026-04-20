@@ -313,10 +313,13 @@ async function routeApi(req, res, url) {
     "POST:/api/mpesa/admin-push",
     "GET:/api/orders",
     "GET:/api/stock/movements",
+    "PATCH:/api/orders",
     "POST:/api/products",
     "PUT:/api/products"
   ];
-  if (protectedRoutes.includes(`${method}:${url.pathname}`) || (method === "PUT" && url.pathname.startsWith("/api/products/"))) {
+  if (protectedRoutes.includes(`${method}:${url.pathname}`) ||
+    (method === "PUT" && url.pathname.startsWith("/api/products/")) ||
+    (method === "PATCH" && url.pathname.startsWith("/api/orders/"))) {
     const ADMIN_PIN = process.env.ADMIN_PIN || "2495";
     if (req.headers["x-admin-pin"] !== ADMIN_PIN) {
       return sendJson(res, 401, { error: "Unauthorized. Invalid Admin PIN." });
@@ -629,6 +632,19 @@ async function routeApi(req, res, url) {
 
   if (method === "GET" && url.pathname === "/api/orders") {
     return sendJson(res, 200, store.orders);
+  }
+
+  if (method === "PATCH" && url.pathname.startsWith("/api/orders/")) {
+    return parseBody(req).then(async (body) => {
+      const id = url.pathname.split("/").pop();
+      const order = store.orders.find(o => o.id === id);
+      if (!order) return sendJson(res, 404, { error: "Order not found" });
+      const allowed = ["paid", "pending", "pending_delivery", "failed"];
+      if (!allowed.includes(body.paymentStatus)) return sendJson(res, 400, { error: "Invalid status" });
+      order.paymentStatus = body.paymentStatus;
+      await writeStore(store);
+      return sendJson(res, 200, order);
+    }).catch(err => sendJson(res, 400, { error: err.message }));
   }
 
   if (method === "POST" && url.pathname === "/api/marketing/broadcast") {

@@ -360,26 +360,50 @@ function renderOrders() {
     .map((o) => {
       const status = o.paymentStatus || "pending";
       const statusClass = `status-${status}`;
+      const isPaid = status === "paid";
       return `
       <tr>
         <td>${new Date(o.createdAt).toLocaleString()}</td>
-        <td>${o.id}</td>
-        <td>${o.customer.name} (${o.customer.phone})</td>
+        <td style="font-size:0.8rem;">${o.id}</td>
+        <td>${o.customer.name}<br><small>${o.customer.phone}</small></td>
         <td>${currency(o.total)}</td>
         <td><span class="status-pill ${statusClass}">${status}</span></td>
+        <td>
+          ${!isPaid ? `<button class="mark-paid-btn cta-btn" data-order-id="${o.id}" style="padding:0.25rem 0.6rem;font-size:0.75rem;background:#22c55e;margin-bottom:4px;">✓ Mark Paid</button><br>` : ''}
+          <button class="receipt-btn" data-order-id="${o.id}" style="padding:0.25rem 0.6rem;font-size:0.75rem;background:var(--muted);">🧾 Receipt</button>
+        </td>
       </tr>
     `;
     })
     .join("");
 
-  $("#ordersTable").innerHTML = `
-    <table class="table">
-      <thead>
-        <tr><th>Date</th><th>Order ID</th><th>Customer</th><th>Total</th><th>Status</th></tr>
-      </thead>
-      <tbody>${rows || "<tr><td colspan='5'>No orders found.</td></tr>"}</tbody>
-    </table>
-  `;
+  const tableBody = $("#ordersTableBody");
+  if (tableBody) {
+    tableBody.innerHTML = rows || "<tr><td colspan='6'>No orders found.</td></tr>";
+
+    tableBody.querySelectorAll(".receipt-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const order = state.orders.find(o => o.id === btn.getAttribute("data-order-id"));
+        if (order) openHtmlReceiptInTab(generateCustomerHtmlReceipt(order));
+      });
+    });
+
+    tableBody.querySelectorAll(".mark-paid-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const orderId = btn.getAttribute("data-order-id");
+        try {
+          await api(`/api/orders/${orderId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ paymentStatus: "paid" })
+          });
+          await loadAdminData();
+        } catch (err) {
+          alert("Failed to update: " + err.message);
+        }
+      });
+    });
+  }
 }
 
 function renderDailySales() {
