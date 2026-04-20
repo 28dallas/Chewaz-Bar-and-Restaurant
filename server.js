@@ -808,34 +808,36 @@ function rateLimit(req, res) {
 }
 
 const handler = async (req, res) => {
-  // Security Headers
-  res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("X-Frame-Options", "DENY");
-  res.setHeader("X-XSS-Protection", "1; mode=block");
-  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-  res.setHeader("Content-Security-Policy", "default-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data: https:;");
+  try {
+    // Security Headers
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Frame-Options", "DENY");
+    res.setHeader("X-XSS-Protection", "1; mode=block");
+    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    res.setHeader("Content-Security-Policy", "default-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data: https:;");
 
-  if (!rateLimit(req, res)) {
-    return sendJson(res, 429, { error: "Too many requests. Please slow down." });
-  }
+    if (!rateLimit(req, res)) {
+      return sendJson(res, 429, { error: "Too many requests. Please slow down." });
+    }
 
-  const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+    const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
 
-  if ((req.method === "POST" || req.method === "PUT" || req.method === "PATCH") && req.headers["content-type"]?.includes("application/json") === false) {
-    return sendJson(res, 415, { error: "Content-Type must be application/json" });
-  }
+    if ((req.method === "POST" || req.method === "PUT" || req.method === "PATCH") && req.headers["content-type"]?.includes("application/json") === false) {
+      return sendJson(res, 415, { error: "Content-Type must be application/json" });
+    }
 
-  if (url.pathname.startsWith("/api/")) {
-    try {
+    if (url.pathname.startsWith("/api/")) {
       await routeApi(req, res, url);
       return;
-    } catch (err) {
-      console.error("[API] Unhandled error:", err.message);
+    }
+
+    return serveStatic(req, res, url);
+  } catch (err) {
+    console.error("[Handler] Fatal error:", err.message, err.stack);
+    if (!res.headersSent) {
       return sendJson(res, 500, { error: "Internal server error" });
     }
   }
-
-  return serveStatic(req, res, url);
 };
 
 const server = http.createServer(handler);
