@@ -807,7 +807,7 @@ function rateLimit(req, res) {
   return true;
 }
 
-const server = http.createServer(async (req, res) => {
+const handler = async (req, res) => {
   // Security Headers
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
@@ -819,7 +819,7 @@ const server = http.createServer(async (req, res) => {
     return sendJson(res, 429, { error: "Too many requests. Please slow down." });
   }
 
-  const url = new URL(req.url || "/", `http://${req.headers.host}`);
+  const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
 
   if ((req.method === "POST" || req.method === "PUT" || req.method === "PATCH") && req.headers["content-type"]?.includes("application/json") === false) {
     return sendJson(res, 415, { error: "Content-Type must be application/json" });
@@ -836,13 +836,13 @@ const server = http.createServer(async (req, res) => {
   }
 
   return serveStatic(req, res, url);
-});
+};
 
+const server = http.createServer(handler);
 
 server.listen(PORT, HOST, () => {
-  // eslint-disable-next-line no-console
   console.log(`Raven Store running at http://${HOST}:${PORT}`);
 });
 
 // Vercel serverless export
-module.exports = server;
+module.exports = handler;
