@@ -119,12 +119,32 @@ async function readStore() {
 
   if (!store) {
     try {
-      store = JSON.parse(fs.readFileSync(DATA_PATH, "utf8"));
+      const dataPath = path.join(__dirname, "data", "store.json");
+      if (fs.existsSync(dataPath)) {
+        store = JSON.parse(fs.readFileSync(dataPath, "utf8"));
+      }
     } catch (err) {
-      console.error("[FS] Fatal error reading local store:", err.message);
-      // fallback to empty structure if both fail
-      store = { settings: {}, products: [], orders: [], marketingLogs: [], stockMovements: [], customers: [] };
+      console.warn("[FS] Could not read local store:", err.message);
     }
+  }
+
+  // If still no store, initialize with defaults
+  if (!store || !store.products || store.products.length === 0) {
+    console.log("[Store] Initializing with default data");
+    store = {
+      settings: {
+        businessName: "Chewaz Bar and Restaurant",
+        tillNumber: "3706694",
+        salesPhones: ["0759305448", "0718236550"],
+        currency: "KES",
+        deliveryHours: "11:00 AM - 11:59 PM"
+      },
+      products: [],
+      orders: [],
+      marketingLogs: [],
+      stockMovements: [],
+      customers: []
+    };
   }
 
   if (!Array.isArray(store.stockMovements)) {
