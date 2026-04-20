@@ -127,19 +127,8 @@ async function readStore() {
     }
   }
 
-  if (!Array.isArray(store.stockMovements) || store.stockMovements.length === 0) {
-    store.stockMovements = (store.products || []).slice(0, 8).map((p, i) => ({
-      id: "mock_" + Date.now() + "_" + i,
-      createdAt: new Date().toISOString(),
-      productId: p.id,
-      productNumber: p.productNumber || index + 1,
-      productName: p.name,
-      type: "stock_out", // Need an "out" movement to register as a sale
-      bottlesIn: 0,
-      cratesIn: 0,
-      bottlesOut: Math.floor(Math.random() * 80) + 15, // Mock realistic sales numbers
-      cratesOut: Math.floor(Math.random() * 3)
-    }));
+  if (!Array.isArray(store.stockMovements)) {
+    store.stockMovements = [];
   }
   if (!store.settings.businessName) store.settings.businessName = "Chewaz Bar and Restaurant";
   if (!store.settings.tillNumber) store.settings.tillNumber = "3706694";
@@ -854,3 +843,6 @@ server.listen(PORT, HOST, () => {
   // eslint-disable-next-line no-console
   console.log(`Raven Store running at http://${HOST}:${PORT}`);
 });
+
+// Vercel serverless export
+module.exports = server;
