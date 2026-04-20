@@ -3,7 +3,16 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const { URL } = require("url");
-const { kv } = require("@vercel/kv");
+
+// Lazy-load @vercel/kv only when env vars are present
+let kv = null;
+try {
+  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+    kv = require("@vercel/kv").kv;
+  }
+} catch (e) {
+  console.warn("[KV] @vercel/kv not available:", e.message);
+}
 
 
 // ── Africa's Talking SMS ──────────────────────────────────────────────────────
@@ -108,12 +117,11 @@ const PUBLIC_DIR = path.join(__dirname, "public");
 
 async function readStore() {
   let store;
-  const kvUrl = process.env.KV_REST_API_URL;
-  if (kvUrl && !kvUrl.includes("your_kv") && process.env.KV_REST_API_TOKEN) {
+  if (kv) {
     try {
       store = await kv.get("raven_store");
     } catch (err) {
-      console.warn("[KV] Error reading from KV, falling back to local file:", err.message);
+      console.warn("[KV] Error reading from KV:", err.message);
     }
   }
 
@@ -164,8 +172,7 @@ async function readStore() {
 }
 
 async function writeStore(store) {
-  const kvUrl = process.env.KV_REST_API_URL;
-  if (kvUrl && !kvUrl.includes("your_kv") && process.env.KV_REST_API_TOKEN) {
+  if (kv) {
     try {
       await kv.set("raven_store", store);
     } catch (err) {
