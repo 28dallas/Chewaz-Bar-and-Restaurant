@@ -115,8 +115,16 @@ const HOST = process.env.HOST || "127.0.0.1";
 const DATA_PATH = path.join(__dirname, "data", "store.json");
 const PUBLIC_DIR = path.join(__dirname, "public");
 
+// Module-level cache — persists across requests within the same serverless instance
+let _storeCache = null;
+
 async function readStore() {
+  // 1. Return in-memory cache if available (fastest, works within same instance)
+  if (_storeCache) return _storeCache;
+
   let store;
+
+  // 2. Try KV (persists across all instances)
   if (kv) {
     try {
       store = await kv.get("raven_store");
@@ -125,6 +133,7 @@ async function readStore() {
     }
   }
 
+  // 3. Fall back to bundled store.json
   if (!store) {
     try {
       const dataPath = path.join(__dirname, "data", "store.json");
@@ -136,9 +145,8 @@ async function readStore() {
     }
   }
 
-  // If still no store, initialize with defaults
+  // 4. Last resort defaults
   if (!store || !store.products || store.products.length === 0) {
-    console.log("[Store] Initializing with default data");
     store = {
       settings: {
         businessName: "Chewaz Bar and Restaurant",
@@ -156,22 +164,24 @@ async function readStore() {
     };
   }
 
-  if (!Array.isArray(store.stockMovements)) {
-    store.stockMovements = [];
-  }
+  if (!Array.isArray(store.stockMovements)) store.stockMovements = [];
+  if (!Array.isArray(store.orders)) store.orders = [];
   if (!store.settings.businessName) store.settings.businessName = "Chewaz Bar and Restaurant";
   if (!store.settings.tillNumber) store.settings.tillNumber = "3706694";
-  if (!Array.isArray(store.settings.salesPhones)) {
-    store.settings.salesPhones = ["0759305448", "0718236550"];
-  }
+  if (!Array.isArray(store.settings.salesPhones)) store.settings.salesPhones = ["0759305448", "0718236550"];
   store.products = (store.products || []).map((product, index) => ({
     ...product,
     productNumber: Number(product.productNumber || index + 1)
   }));
+
+  _storeCache = store;
   return store;
 }
 
 async function writeStore(store) {
+  // Always update in-memory cache first (instant, works within same instance)
+  _storeCache = store;
+
   if (kv) {
     try {
       await kv.set("raven_store", store);
@@ -179,12 +189,12 @@ async function writeStore(store) {
       console.error("[KV] Error writing to KV:", err.message);
     }
   }
-  // still write to local file for backup/local dev consistency
+  // write to local file for local dev
   try {
     fs.mkdirSync(path.join(__dirname, "data"), { recursive: true });
     fs.writeFileSync(DATA_PATH, JSON.stringify(store, null, 2));
   } catch (err) {
-    console.error("[FS] Error writing to local file:", err.message);
+    // silent on Vercel - filesystem is read-only
   }
 }
 
